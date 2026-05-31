@@ -128,6 +128,7 @@ export const translations = {
     // Update banner
     feat_cancel_tip:    "جديد · يمكنك الآن إلغاء التسجيل من أي شاشة بالضغط على {0}",
     feat_cancel_got_it: "فهمت",
+    feat_autostart_fix: "تم إصلاح مشكلة \"التشغيل عند بدء التشغيل\". إذا لم يعمل التشغيل التلقائي، فعطّل الخيار ثم فعّله مرة أخرى من الإعدادات.",
     ob_cancel_tip:      "اضغط {0} لإلغاء أي تسجيل نشط من أي شاشة",
 
     upd_available: "تحديث جديد متاح",
@@ -418,6 +419,7 @@ export const translations = {
     // Update banner
     feat_cancel_tip:    "New · Cancel active recording from any screen with {0}",
     feat_cancel_got_it: "Got it",
+    feat_autostart_fix: "Fixed a \"Launch on Startup\" issue. If autostart still doesn't work, toggle it off and back on in Settings.",
     ob_cancel_tip:      "Press {0} to cancel any active recording from any screen",
 
     upd_available: "Update available",

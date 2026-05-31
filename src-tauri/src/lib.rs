@@ -74,30 +74,41 @@ fn paste_at_cursor(app: tauri::AppHandle) {
             IsWindowVisible, SetForegroundWindow, GW_HWNDNEXT,
         };
 
-        // Resolve Warid's own HWND so we never paste back into ourselves.
-        let warid_hwnd: HWND = app
+        // Resolve every HWND that belongs to Warid (the main window AND the
+        // floating overlay control bar) so we never paste back into ourselves.
+        // Clicking the overlay to stop a recording makes it the foreground
+        // window, so excluding only "main" would let Ctrl+V land in the overlay.
+        let warid_hwnds: Vec<*mut core::ffi::c_void> = ["main", "overlay"]
+            .iter()
+            .filter_map(|label| app.get_webview_window(label))
+            .filter_map(|w| w.hwnd().ok())
+            .map(|h| h.0)
+            .filter(|p| !p.is_null())
+            .collect();
+        let is_warid = |h: HWND| !h.0.is_null() && warid_hwnds.iter().any(|p| *p == h.0);
+
+        // Fallback start point for the Z-order walk when nothing is foreground.
+        let main_hwnd: HWND = app
             .get_webview_window("main")
             .and_then(|w| w.hwnd().ok())
             .unwrap_or(HWND(std::ptr::null_mut()));
 
         // Step 1: Capture the foreground window.
         let initial_foreground = unsafe { GetForegroundWindow() };
-        let warid_was_foreground = !warid_hwnd.0.is_null()
-            && !initial_foreground.0.is_null()
-            && initial_foreground.0 == warid_hwnd.0;
+        let warid_was_foreground = is_warid(initial_foreground);
 
-        // Step 2: Pick a target. If Warid itself is in front (or nothing is),
+        // Step 2: Pick a target. If a Warid window is in front (or nothing is),
         // walk the Z-order for the next visible, non-minimized, non-Warid window.
         let mut target_hwnd = initial_foreground;
-        if target_hwnd.0.is_null() || target_hwnd.0 == warid_hwnd.0 {
-            let start = if target_hwnd.0.is_null() { warid_hwnd } else { target_hwnd };
+        if target_hwnd.0.is_null() || is_warid(target_hwnd) {
+            let start = if target_hwnd.0.is_null() { main_hwnd } else { target_hwnd };
             let mut cursor = unsafe { GetWindow(start, GW_HWNDNEXT) }
                 .unwrap_or(HWND(std::ptr::null_mut()));
             let mut found = HWND(std::ptr::null_mut());
             while !cursor.0.is_null() {
                 let visible = unsafe { IsWindowVisible(cursor).as_bool() };
                 let iconic = unsafe { IsIconic(cursor).as_bool() };
-                if visible && !iconic && cursor.0 != warid_hwnd.0 {
+                if visible && !iconic && !is_warid(cursor) {
                     found = cursor;
                     break;
                 }
@@ -109,7 +120,7 @@ fn paste_at_cursor(app: tauri::AppHandle) {
 
         // If we still have no target, bail before sending keystrokes — otherwise
         // Ctrl+V lands in Warid itself or wherever the OS decides.
-        if target_hwnd.0.is_null() || target_hwnd.0 == warid_hwnd.0 {
+        if target_hwnd.0.is_null() || is_warid(target_hwnd) {
             return;
         }
 
@@ -143,7 +154,7 @@ fn paste_at_cursor(app: tauri::AppHandle) {
 
         // Step 5: Verify the target really is in front before pressing Ctrl+V.
         let now_foreground = unsafe { GetForegroundWindow() };
-        if now_foreground.0.is_null() || now_foreground.0 == warid_hwnd.0 {
+        if now_foreground.0.is_null() || is_warid(now_foreground) {
             return;
         }
 

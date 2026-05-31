@@ -47,6 +47,7 @@ export function SettingsPage() {
     logsEnabled !== settings.logsEnabled ||
     theme !== settings.theme ||
     uiLanguage !== settings.uiLanguage ||
+    launchOnStartup !== settings.launchOnStartup ||
     (cancelHotkey ?? "") !== (settings.cancelHotkey || "");
 
   const handleSave = async (e: React.FormEvent) => {

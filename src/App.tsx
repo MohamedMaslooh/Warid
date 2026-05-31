@@ -19,6 +19,7 @@ import { MilestoneBanner } from "./components/layout/MilestoneBanner";
 import { fetchLatestVersion, isNewer } from "./lib/updateCheck";
 import { useAnalyticsStore } from "./stores/analyticsStore";
 import { syncCancelHotkey } from "./lib/cancelHotkey";
+import { reconcileLaunchOnStartup } from "./lib/autostart";
 import { formatAccelerator } from "./lib/hotkey";
 import { useLang } from "./lib/useLang";
 
@@ -72,6 +73,17 @@ export default function App() {
     if (!loaded || isOverlay) return;
     void syncCancelHotkey(settings.cancelHotkey);
   }, [loaded, settings.cancelHotkey, isOverlay]);
+
+  // One-time self-heal for the 1.0.1 autostart fix: re-apply the registry entry
+  // for users who already had Launch on Startup enabled, so they don't have to
+  // toggle it off and on manually.
+  useEffect(() => {
+    if (!loaded || isOverlay || settings.autostartHealed) return;
+    (async () => {
+      await reconcileLaunchOnStartup(settings.launchOnStartup);
+      await update({ autostartHealed: true });
+    })();
+  }, [loaded, isOverlay, settings.autostartHealed, settings.launchOnStartup, update]);
 
   // Apply theme
   useEffect(() => {
@@ -147,6 +159,24 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => update({ seenCancelHotkey: true })}
+                    className="shrink-0 text-xs font-semibold px-3 py-0.5 rounded-full"
+                    style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                  >
+                    {t("feat_cancel_got_it")}
+                  </button>
+                </div>
+              )}
+              {loaded && settings.seenCancelHotkey && !settings.seenAutostartNotice && (
+                <div
+                  className="flex items-center justify-between gap-3 px-4 py-2 text-sm shrink-0"
+                  style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}
+                >
+                  <span style={{ color: "var(--text-2)" }}>
+                    {t("feat_autostart_fix")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => update({ seenAutostartNotice: true })}
                     className="shrink-0 text-xs font-semibold px-3 py-0.5 rounded-full"
                     style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
                   >

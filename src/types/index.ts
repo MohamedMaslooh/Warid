@@ -48,6 +48,10 @@ export interface Settings {
   seenCancelHotkey: boolean;
   /** One-time flag: existing users are flipped to Auto model selection once. */
   autoModeMigrated: boolean;
+  /** One-time flag: the autostart registry entry has been re-applied after the 1.0.1 fix. */
+  autostartHealed: boolean;
+  /** False until the user dismisses the one-time "Launch on Startup fixed" notice. */
+  seenAutostartNotice: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -67,6 +71,8 @@ export const DEFAULT_SETTINGS: Settings = {
   cancelHotkey: "CommandOrControl+Alt+X",
   seenCancelHotkey: false,
   autoModeMigrated: false,
+  autostartHealed: false,
+  seenAutostartNotice: false,
 };
 
 export const DEFAULT_TEMPLATES: Omit<Template, "created_at" | "updated_at">[] = [
