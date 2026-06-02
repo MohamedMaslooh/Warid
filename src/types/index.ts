@@ -59,8 +59,8 @@ export interface Settings {
    * - "off": never shown
    */
   overlayMode: "recording" | "always" | "off";
-  /** False until the user dismisses the v1.1.0 "What's New" notice. */
-  seenWhatsNew110: boolean;
+  /** False until the user dismisses the v1.1.1 "What's New" notice. */
+  seenWhatsNew111: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -83,7 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostartHealed: false,
   seenAutostartNotice: false,
   overlayMode: "recording",
-  seenWhatsNew110: false,
+  seenWhatsNew111: false,
 };
 
 export const DEFAULT_TEMPLATES: Omit<Template, "created_at" | "updated_at">[] = [

@@ -41,6 +41,10 @@
     --bg-grad-3:    rgba(240,140,44,.08);
     --select-bg:          #FFFFFF;
     --select-border:      #E8E3D6;
+
+    /* Floating recording capsule — frosted glass (light) */
+    --overlay-glass:        rgba(252,250,246,0.82);
+    --overlay-glass-border: rgba(28,27,23,0.10);
   }
 
   .dark {
@@ -78,6 +82,10 @@
     --bg-grad-3:    rgba(255,179,71,.10);
     --select-bg:          #15151D;
     --select-border:      rgba(255, 255, 255, 0.15);
+
+    /* Floating recording capsule — frosted glass (dark) */
+    --overlay-glass:        rgba(18,18,28,0.74);
+    --overlay-glass-border: rgba(255,255,255,0.12);
   }
 
   html, body {

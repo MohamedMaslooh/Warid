@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Warid",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "identifier": "com.maslooh.warid",
   "build": {
     "frontendDist": "../dist",
@@ -25,8 +25,8 @@
         "title": "Warid Control",
         "label": "overlay",
         "url": "index.html?overlay",
-        "width": 420,
-        "height": 64,
+        "width": 460,
+        "height": 120,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,

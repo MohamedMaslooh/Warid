@@ -178,8 +178,8 @@ export default function App() {
           />
         ) : (
           <>
-            {loaded && !settings.seenWhatsNew110 && (
-              <WhatsNew onDismiss={() => update({ seenWhatsNew110: true })} />
+            {loaded && !settings.seenWhatsNew111 && (
+              <WhatsNew onDismiss={() => update({ seenWhatsNew111: true })} />
             )}
             <Sidebar />
             <main className="flex-1 flex flex-col overflow-hidden">

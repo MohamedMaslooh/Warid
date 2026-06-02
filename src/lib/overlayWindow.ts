@@ -54,7 +54,7 @@ async function positionBottomCenter(overlay: WebviewWindow): Promise<void> {
   if (!monitor) return;
   const size = await overlay.outerSize();
   const scale = monitor.scaleFactor;
-  const marginBottom = Math.round(40 * scale);
+  const marginBottom = Math.round(16 * scale);
   const x = Math.round(monitor.position.x + (monitor.size.width - size.width) / 2);
   const y = Math.round(
     monitor.position.y + monitor.size.height - size.height - marginBottom

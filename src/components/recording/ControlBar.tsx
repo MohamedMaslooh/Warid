@@ -89,11 +89,13 @@ export function ControlBar() {
         <div
           className="flex items-center gap-2 h-12 px-3 select-none"
           style={{
-            background: "var(--surface)",
-            border: `1px solid ${isProcessing ? "var(--accent-border)" : "var(--border)"}`,
+            background: "var(--overlay-glass)",
+            border: `1px solid ${isProcessing ? "var(--accent-border)" : "var(--overlay-glass-border)"}`,
             borderRadius: 999,
-            boxShadow: "0 12px 32px -8px rgba(0,0,0,.35)",
-            backdropFilter: "blur(14px)",
+            boxShadow:
+              "0 8px 24px -8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10)",
+            backdropFilter: "blur(28px) saturate(1.6)",
+            WebkitBackdropFilter: "blur(28px) saturate(1.6)",
             animation: "overlayPop 0.25s ease-out",
           }}
         >
