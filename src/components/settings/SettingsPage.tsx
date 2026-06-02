@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { Eye, EyeOff, Save } from "lucide-react";
 import { useSettingsStore } from "../../stores/settingsStore";
+import type { Settings } from "../../types";
 import { KNOWN_MODELS, AUTO_MODEL_ID, AUTO_SEQUENCE, modelDailyLimit } from "../../lib/gemini";
 import { useRequestTrackerStore } from "../../stores/requestTrackerStore";
 import { Sparkles } from "lucide-react";
@@ -31,6 +32,7 @@ export function SettingsPage() {
   const [uiLanguage, setUiLanguage] = useState(settings.uiLanguage);
   const [launchOnStartup, setLaunchOnStartupState] = useState(settings.launchOnStartup);
   const [cancelHotkey, setCancelHotkey] = useState<string | null>(settings.cancelHotkey || null);
+  const [overlayMode, setOverlayMode] = useState(settings.overlayMode);
   const [appVersion, setAppVersion] = useState("");
 
   useEffect(() => {
@@ -281,6 +283,25 @@ export function SettingsPage() {
                   <p className="text-xs" style={{ color: "var(--muted)" }}>{t("set_cancel_hotkey_hint")}</p>
                 </div>
                 <HotkeyField value={cancelHotkey} onChange={setCancelHotkey} label={null} hint={null} />
+              </div>
+              <div className="space-y-1.5">
+                <div>
+                  <span className="text-sm" style={{ color: "var(--text)" }}>{t("set_overlay_label")}</span>
+                  <p className="text-xs" style={{ color: "var(--muted)" }}>{t("set_overlay_hint")}</p>
+                </div>
+                <Select
+                  value={overlayMode}
+                  onChange={(v) => {
+                    const next = v as Settings["overlayMode"];
+                    setOverlayMode(next);
+                    void update({ overlayMode: next });
+                  }}
+                  options={[
+                    { value: "recording", label: t("set_overlay_recording") },
+                    { value: "always",    label: t("set_overlay_always") },
+                    { value: "off",       label: t("set_overlay_off") },
+                  ]}
+                />
               </div>
             </section>
 

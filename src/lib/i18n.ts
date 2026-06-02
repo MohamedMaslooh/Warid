@@ -97,6 +97,11 @@ export const translations = {
     set_launch_startup_hint: "فتح وارِد تلقائياً عند تشغيل الكمبيوتر",
     set_cancel_hotkey:       "اختصار إلغاء التسجيل",
     set_cancel_hotkey_hint:  "يوقف التسجيل أو المعالجة الجارية من أي شاشة.",
+    set_overlay_label:       "الشريط العائم",
+    set_overlay_hint:        "نافذة صغيرة عائمة تظهر حالة التسجيل والمعالجة.",
+    set_overlay_recording:   "أثناء التسجيل فقط",
+    set_overlay_always:      "ظاهر دائماً (اضغط الميكروفون للتسجيل)",
+    set_overlay_off:         "معطّل",
     set_appearance:    "المظهر",
     set_theme_auto:    "تلقائي (حسب النظام)",
     set_theme_light:   "فاتح",
@@ -294,6 +299,16 @@ export const translations = {
     upload_split_interval: "تقسيم كل (دقائق):",
     upload_empty_queue: "لا توجد ملفات في الطابور حالياً",
     upload_add_files: "إضافة ملفات",
+
+    // What's New — v1.1.0
+    wn_title:        "الجديد في وارِد 1.1.0",
+    wn_dismiss:      "فهمت",
+    wn_capsule_t:    "شريط التسجيل العائم",
+    wn_capsule_b:    "يظهر الآن شريط صغير عائم أسفل الشاشة أثناء التسجيل، يعرض الحالة والمؤقت وأزرار التحكم. بشكل افتراضي يظهر فقط أثناء التسجيل ويختفي عند انتهائه.",
+    wn_capsule_always_t: "ابقه ظاهراً دائماً",
+    wn_capsule_always_b: "من الإعدادات ← التفضيلات ← الشريط العائم، يمكنك تعيينه ليكون ظاهراً دائماً كأداة إطلاق سريع من أي شاشة.",
+    wn_capsule_off_t:    "أخفه تماماً",
+    wn_capsule_off_b:    "إذا كنت تفضل عدم رؤيته، اختر «معطّل» في الإعدادات نفسها.",
   },
 
   en: {
@@ -388,6 +403,11 @@ export const translations = {
     set_launch_startup_hint: "Open Warid automatically when your computer starts",
     set_cancel_hotkey:       "Cancel Recording Shortcut",
     set_cancel_hotkey_hint:  "Stops active recording or processing from any screen.",
+    set_overlay_label:       "Floating bar",
+    set_overlay_hint:        "A small floating window that shows recording and processing status.",
+    set_overlay_recording:   "While recording only",
+    set_overlay_always:      "Always visible (click the mic to record)",
+    set_overlay_off:         "Off",
     set_appearance:    "Appearance",
     set_theme_auto:    "Auto (system)",
     set_theme_light:   "Light",
@@ -578,6 +598,16 @@ export const translations = {
     upload_split_interval: "Split interval (mins):",
     upload_empty_queue: "No files in the queue currently",
     upload_add_files: "Add files",
+
+    // What's New — v1.1.0
+    wn_title:        "What's New in Warid 1.1.0",
+    wn_dismiss:      "Got it",
+    wn_capsule_t:    "Floating Recording Capsule",
+    wn_capsule_b:    "A small floating bar now appears at the bottom of your screen while recording, showing status, a live timer, and pause/stop controls. By default it shows only during recording and disappears when done.",
+    wn_capsule_always_t: "Keep it always visible",
+    wn_capsule_always_b: "From Settings → Preferences → Floating Bar, you can set it to always-on as a quick launcher from any screen.",
+    wn_capsule_off_t:    "Hide it completely",
+    wn_capsule_off_b:    "If you'd rather not see it at all, choose \"Off\" in those same settings.",
   },
 } as const;
 

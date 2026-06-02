@@ -316,6 +316,7 @@ function Heatmap({ daily }: { daily: DailyActivity[] }) {
         <span className="font-bold text-sm" style={{ color: "var(--text)" }}>{t("anl_activity")}</span>
       </div>
       <div
+        dir="ltr"
         className="grid gap-1"
         style={{
           gridTemplateColumns: `repeat(${HEATMAP_WEEKS}, 1fr)`,
@@ -374,7 +375,7 @@ function Heatmap({ daily }: { daily: DailyActivity[] }) {
         </div>,
         document.body,
       )}
-      <div className="flex items-center justify-end gap-2 mt-3 text-xs" style={{ color: "var(--muted)" }}>
+      <div dir="ltr" className="flex items-center justify-end gap-2 mt-3 text-xs" style={{ color: "var(--muted)" }}>
         <span>{t("anl_less")}</span>
         {[0, 1, 2, 3, 4].map((l) => (
           <span

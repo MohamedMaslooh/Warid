@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
-  KeyRound,
   ArrowLeft,
   ArrowRight,
   ExternalLink,
@@ -17,6 +16,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useLang } from "../../lib/useLang";
 import { formatAccelerator } from "../../lib/hotkey";
+import { Select } from "../ui/Select";
 import type { Lang } from "../../lib/i18n";
 import type { Settings } from "../../types";
 
@@ -29,11 +29,51 @@ interface Props {
 
 const AI_STUDIO_URL = "https://aistudio.google.com/apikey";
 
+const SPLASH_WORDS = [
+  "مرحباً",
+  "Welcome",
+  "Bienvenido",
+  "ようこそ",
+  "欢迎",
+  "Bienvenue",
+  "Willkommen",
+  "Benvenuto",
+  "स्वागत है",
+  "Добро пожаловать",
+  "Hoş geldiniz",
+  "خوش آمدید",
+];
+
 export function Welcome({ startAtKey = false, onComplete }: Props) {
   const { settings, update } = useSettingsStore();
   const { t, isRTL } = useLang();
   const [step, setStep] = useState<0 | 1>(startAtKey ? 1 : 0);
   const [apiKey, setApiKey] = useState("");
+
+  const [showSplash, setShowSplash] = useState(true);
+  const [fadeSplash, setFadeSplash] = useState(false);
+  const [splashIdx, setSplashIdx] = useState(0);
+
+  useEffect(() => {
+    if (!showSplash) return;
+    if (splashIdx < SPLASH_WORDS.length - 1) {
+      const timer = setTimeout(() => {
+        setSplashIdx((prev) => prev + 1);
+      }, 220);
+      return () => clearTimeout(timer);
+    } else {
+      const fadeTimer = setTimeout(() => {
+        setFadeSplash(true);
+      }, 400);
+      const hideTimer = setTimeout(() => {
+        setShowSplash(false);
+      }, 700);
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(hideTimer);
+      };
+    }
+  }, [splashIdx, showSplash]);
 
   const ArrowNext = isRTL ? ArrowLeft : ArrowRight;
   const ArrowPrev = isRTL ? ArrowRight : ArrowLeft;
@@ -60,10 +100,56 @@ export function Welcome({ startAtKey = false, onComplete }: Props) {
 
   return (
     <div
-      className="w-full h-full flex flex-col overflow-hidden"
+      className="w-full h-full flex flex-col overflow-hidden relative"
       style={{ background: "var(--bg)", color: "var(--text)" }}
       dir={isRTL ? "rtl" : "ltr"}
     >
+      {showSplash && (
+        <div
+          className="fixed inset-0 flex flex-col items-center justify-center z-50 select-none overflow-hidden transition-all duration-300"
+          style={{
+            background: "var(--bg)",
+            opacity: fadeSplash ? 0 : 1,
+            transform: fadeSplash ? "scale(1.02)" : "scale(1)",
+            pointerEvents: "none",
+          }}
+        >
+          {/* Animated decorative blur blobs in the background */}
+          <div
+            className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full mix-blend-screen filter blur-[100px] opacity-15 animate-blob pointer-events-none"
+            style={{ background: "var(--accent)", animationDelay: "0s" }}
+          />
+          <div
+            className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full mix-blend-screen filter blur-[100px] opacity-15 animate-blob pointer-events-none"
+            style={{ background: "var(--accent-2)", animationDelay: "2s" }}
+          />
+
+          <div className="flex flex-col items-center gap-6 text-center px-6 relative z-10">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-white relative animate-pulse"
+              style={{
+                background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+                boxShadow: "0 8px 24px var(--accent-soft)",
+              }}
+            >
+              <Sparkles size={32} strokeWidth={2} />
+            </div>
+
+            <div className="w-full flex items-center justify-center py-6 overflow-visible">
+              <span
+                key={splashIdx}
+                className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent animate-fade-in py-4 px-6 leading-relaxed overflow-visible text-center"
+                style={{
+                  fontFamily: (splashIdx === 0 || splashIdx === 11) ? '"Noto Kufi Arabic", sans-serif' : '"Outfit", "Inter", sans-serif',
+                }}
+              >
+                {SPLASH_WORDS[splashIdx]}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top accent strip */}
       <div
         className="flex-shrink-0"
@@ -72,6 +158,60 @@ export function Welcome({ startAtKey = false, onComplete }: Props) {
           background: "linear-gradient(90deg, var(--accent), var(--accent-2))",
         }}
       />
+
+      {/* Global Header with Language Switcher */}
+      <div className="flex-shrink-0 flex items-center justify-between px-8 pt-5 pb-2">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+            style={{
+              background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+              boxShadow: "0 4px 12px var(--accent-soft)",
+            }}
+          >
+            <Sparkles size={18} strokeWidth={2} />
+          </div>
+          <span className="font-bold text-xl tracking-tight" style={{ color: "var(--text)" }}>
+            {t("app_name")}
+          </span>
+        </div>
+
+        {/* Global Language Toggle */}
+        <div
+          className="flex items-center gap-1 p-1 rounded-xl"
+          style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => update({ uiLanguage: "en" })}
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all active:scale-95"
+            style={{
+              background: settings.uiLanguage === "en" ? "var(--surface)" : "transparent",
+              color: settings.uiLanguage === "en" ? "var(--accent)" : "var(--muted)",
+              boxShadow: settings.uiLanguage === "en" ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+              fontWeight: settings.uiLanguage === "en" ? 700 : 500,
+            }}
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            onClick={() => update({ uiLanguage: "ar" })}
+            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all active:scale-95"
+            style={{
+              background: settings.uiLanguage === "ar" ? "var(--surface)" : "transparent",
+              color: settings.uiLanguage === "ar" ? "var(--accent)" : "var(--muted)",
+              boxShadow: settings.uiLanguage === "ar" ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+              fontWeight: settings.uiLanguage === "ar" ? 700 : 500,
+            }}
+          >
+            AR
+          </button>
+        </div>
+      </div>
 
       {/* Body — fills remaining space, never scrolls */}
       <div className="flex-1 flex items-center justify-center min-h-0 px-8 py-4">
@@ -88,6 +228,7 @@ export function Welcome({ startAtKey = false, onComplete }: Props) {
               onPickMic={(id) => update({ audioDeviceId: id })}
               onNext={goNext}
               ArrowNext={ArrowNext}
+              isRTL={isRTL}
             />
           ) : (
             <ApiKeyStep
@@ -148,6 +289,7 @@ interface PreferencesProps {
   onPickMic: (id: string) => void;
   onNext: () => void;
   ArrowNext: typeof ArrowRight;
+  isRTL: boolean;
 }
 
 function PreferencesStep({
@@ -161,48 +303,38 @@ function PreferencesStep({
   onPickMic,
   onNext,
   ArrowNext,
+  isRTL,
 }: PreferencesProps) {
   return (
-    <div className="space-y-5">
-      {/* Hero — horizontal, compact */}
-      <div className="flex items-center gap-4">
-        <div
-          className="grid place-items-center flex-shrink-0"
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 16,
-            background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
-            color: "white",
-            boxShadow: "0 8px 24px -8px var(--accent)",
-          }}
-        >
-          <Sparkles size={24} strokeWidth={2} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold leading-tight" style={{ color: "var(--text)" }}>
-            {t("ob_title")}
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--text-2)" }}>
-            {t("ob_sub")}
-          </p>
-        </div>
+    <div className="space-y-5 animate-fade-in">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-black tracking-tight" style={{ color: "var(--text)" }}>
+          {t("ob_title")}
+        </h1>
+        <p className="text-sm" style={{ color: "var(--text-2)" }}>
+          {t("ob_sub")}
+        </p>
       </div>
 
-      {/* About — single compact card */}
+      {/* About — single premium card */}
       <div
-        className="p-3.5"
+        className="p-5 relative overflow-hidden"
         style={{
-          background: "var(--surface)",
+          background: "linear-gradient(135deg, var(--surface), var(--surface-2))",
           border: "1px solid var(--border)",
-          borderRadius: 12,
+          borderRadius: 16,
+          boxShadow: "var(--shadow-card)",
         }}
       >
+        <div
+          className="absolute -right-10 -top-10 w-32 h-32 rounded-full pointer-events-none filter blur-2xl opacity-10"
+          style={{ background: "var(--accent)" }}
+        />
+        <h2 className="text-sm font-bold mb-1.5 flex items-center gap-2" style={{ color: "var(--text)" }}>
+          <Sparkles size={16} className="text-[var(--accent)] animate-pulse" />
+          {t("ob_about_t")}
+        </h2>
         <p className="text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
-          <span className="font-bold" style={{ color: "var(--text)" }}>
-            {t("ob_about_t")}
-          </span>
-          {"  "}
           {t("ob_about_b")}
         </p>
       </div>
@@ -261,6 +393,7 @@ function PreferencesStep({
           t={t}
           value={audioDeviceId}
           onChange={onPickMic}
+          isRTL={isRTL}
         />
       </div>
 
@@ -317,14 +450,14 @@ function SegmentCard({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center gap-2 transition-all"
+      className="flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95"
       style={{
-        padding: "10px 8px",
-        border: `1px solid ${selected ? "var(--accent-border)" : "var(--border)"}`,
+        padding: "12px 8px",
+        border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
         background: selected ? "var(--accent-soft)" : "var(--surface)",
-        borderRadius: 10,
-        boxShadow: selected ? "0 0 0 3px var(--accent-soft)" : "none",
-        minHeight: 44,
+        borderRadius: 12,
+        boxShadow: selected ? "0 0 0 3px var(--accent-soft), var(--shadow-card)" : "none",
+        minHeight: 52,
       }}
     >
       <span
@@ -334,10 +467,10 @@ function SegmentCard({
         {title}
       </span>
       <span
-        className="text-xs"
+        className="text-[10px] uppercase tracking-wider font-bold"
         style={{
           color: selected ? "var(--accent)" : "var(--muted)",
-          opacity: 0.7,
+          opacity: 0.8,
         }}
       >
         {subtitle}
@@ -361,20 +494,20 @@ function ThemeCard({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center gap-1.5 transition-all"
+      className="flex flex-col items-center justify-center gap-1.5 transition-all duration-200 active:scale-95"
       style={{
-        padding: "10px 6px",
-        border: `1px solid ${selected ? "var(--accent-border)" : "var(--border)"}`,
+        padding: "12px 6px",
+        border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
         background: selected ? "var(--accent-soft)" : "var(--surface)",
-        borderRadius: 10,
-        boxShadow: selected ? "0 0 0 3px var(--accent-soft)" : "none",
-        minHeight: 44,
+        borderRadius: 12,
+        boxShadow: selected ? "0 0 0 3px var(--accent-soft), var(--shadow-card)" : "none",
+        minHeight: 52,
         color: selected ? "var(--accent)" : "var(--text-2)",
       }}
     >
-      {icon}
+      <span className="transition-transform duration-200 scale-110">{icon}</span>
       <span
-        className="font-semibold text-xs"
+        className="font-semibold text-[11px]"
         style={{ color: selected ? "var(--accent)" : "var(--text)" }}
       >
         {title}
@@ -391,9 +524,10 @@ interface MicPickerProps {
   t: (key: any, ...args: string[]) => string;
   value: string;
   onChange: (id: string) => void;
+  isRTL: boolean;
 }
 
-function MicrophonePicker({ t, value, onChange }: MicPickerProps) {
+function MicrophonePicker({ t, value, onChange, isRTL }: MicPickerProps) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [needsGrant, setNeedsGrant] = useState(false);
 
@@ -427,22 +561,24 @@ function MicrophonePicker({ t, value, onChange }: MicPickerProps) {
     return () => navigator.mediaDevices.removeEventListener?.("devicechange", handler);
   }, [refresh]);
 
+  const options = [
+    { value: "", label: t("ob_mic_default") },
+    ...devices.map((d, i) => ({
+      value: d.deviceId,
+      label: d.label || `Microphone ${i + 1}`,
+    })),
+  ];
+
   return (
     <div className="flex items-stretch gap-2">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="input-base flex-1"
-        style={{ paddingTop: 10, paddingBottom: 10, minHeight: 44 }}
-        dir="ltr"
-      >
-        <option value="">{t("ob_mic_default")}</option>
-        {devices.map((d, i) => (
-          <option key={d.deviceId || i} value={d.deviceId}>
-            {d.label || `Microphone ${i + 1}`}
-          </option>
-        ))}
-      </select>
+      <div className="flex-1">
+        <Select
+          value={value}
+          onChange={onChange}
+          options={options}
+          dir={isRTL ? "rtl" : "ltr"}
+        />
+      </div>
       {needsGrant && (
         <button
           type="button"
@@ -450,7 +586,7 @@ function MicrophonePicker({ t, value, onChange }: MicPickerProps) {
           className="btn-ghost text-xs flex-shrink-0"
           style={{
             border: "1px solid var(--border)",
-            borderRadius: 10,
+            borderRadius: 12,
             paddingInline: 12,
           }}
         >
@@ -490,45 +626,30 @@ function ApiKeyStep({
   const hasKey = apiKey.trim().length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 animate-fade-in">
       {/* Back row */}
       {onBack && (
         <div>
           <button
             type="button"
             onClick={onBack}
-            className="btn-ghost text-xs"
+            className="btn-ghost text-xs group"
             style={{ padding: "4px 8px" }}
           >
-            <ArrowPrev size={13} strokeWidth={2} />
+            <ArrowPrev size={13} strokeWidth={2} className="transition-transform group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" />
             {t("ob_back")}
           </button>
         </div>
       )}
 
-      {/* Hero — horizontal */}
-      <div className="flex items-center gap-4">
-        <div
-          className="grid place-items-center flex-shrink-0"
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: "var(--accent-soft)",
-            color: "var(--accent)",
-            border: "1px solid var(--accent-border)",
-          }}
-        >
-          <KeyRound size={20} strokeWidth={2} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold leading-tight" style={{ color: "var(--text)" }}>
-            {t("ob_key_step_t")}
-          </h1>
-          <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--text-2)" }}>
-            {t("ob_key_step_b")}
-          </p>
-        </div>
+      {/* Hero — vertical label-free */}
+      <div className="space-y-1">
+        <h1 className="text-3xl font-black tracking-tight" style={{ color: "var(--text)" }}>
+          {t("ob_key_step_t")}
+        </h1>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--text-2)" }}>
+          {t("ob_key_step_b")}
+        </p>
       </div>
 
       {/* Three steps — horizontal row */}
@@ -542,26 +663,26 @@ function ApiKeyStep({
       <button
         type="button"
         onClick={onOpenStudio}
-        className="w-full flex items-center justify-center gap-2 transition-all"
+        className="w-full flex items-center justify-center gap-2.5 transition-all duration-200 hover:border-[var(--accent-border)] hover:bg-[var(--surface-2)] active:scale-[0.99]"
         style={{
           padding: "12px 18px",
-          background: "var(--surface)",
+          background: "linear-gradient(135deg, var(--surface), var(--surface-2))",
           color: "var(--text)",
-          border: "1px dashed var(--accent-border)",
+          border: "1px solid var(--border)",
           borderRadius: 12,
           fontSize: 13,
           fontWeight: 600,
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <ExternalLink size={15} strokeWidth={2} style={{ color: "var(--accent)" }} />
         <span>{t("ob_open_studio")}</span>
         <span
-          className="text-[10px] px-2 py-0.5"
+          className="text-[10px] px-2 py-0.5 font-bold tracking-wide"
           style={{
             background: "var(--success-bg)",
             color: "var(--success)",
             borderRadius: 999,
-            fontWeight: 700,
           }}
         >
           {t("ob_free_badge")}
@@ -570,7 +691,7 @@ function ApiKeyStep({
 
       {/* Key input */}
       <div className="space-y-1.5">
-        <label className="block text-xs font-bold" style={{ color: "var(--text)" }}>
+        <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-2)" }}>
           {t("ob_key_label")}
         </label>
         <input
@@ -579,7 +700,7 @@ function ApiKeyStep({
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={t("ob_key_ph")}
           className="input-base w-full"
-          style={{ paddingTop: 10, paddingBottom: 10 }}
+          style={{ padding: "12px 16px", minHeight: 48 }}
           dir="ltr"
           autoFocus
         />
@@ -615,26 +736,28 @@ function ApiKeyStep({
 function StepCard({ n, title, body }: { n: number; title: string; body: string }) {
   return (
     <div
-      className="p-3 flex flex-col gap-1.5"
+      className="p-4 flex flex-col gap-2.5 transition-all duration-300 relative group"
       style={{
         background: "var(--surface)",
         border: "1px solid var(--border)",
-        borderRadius: 12,
+        borderRadius: 16,
+        boxShadow: "var(--shadow-card)",
       }}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         <div
-          className="w-6 h-6 grid place-items-center flex-shrink-0 text-xs font-bold"
+          className="w-7 h-7 grid place-items-center flex-shrink-0 text-xs font-bold transition-all duration-300 group-hover:scale-110"
           style={{
-            background: "var(--accent-soft)",
-            color: "var(--accent)",
+            background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+            color: "white",
             borderRadius: "50%",
             fontFamily: '"Inter", sans-serif',
+            boxShadow: "0 2px 8px var(--accent-soft)",
           }}
         >
           {n}
         </div>
-        <p className="font-semibold text-xs" style={{ color: "var(--text)" }}>
+        <p className="font-bold text-xs" style={{ color: "var(--text)" }}>
           {title}
         </p>
       </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pause, Play, Square, X } from "lucide-react";
+import { Mic, Pause, Play, Square, X } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { emit } from "@tauri-apps/api/event";
 import { useLang } from "../../lib/useLang";
@@ -17,7 +17,7 @@ export function ControlBar() {
   const { lang } = useLang();
   const isRTL = lang === "ar";
   const [payload, setPayload] = useState<OverlayPayload>({
-    state: "recording",
+    state: "idle",
     paused: false,
     duration: 0,
   });
@@ -43,20 +43,25 @@ export function ControlBar() {
     return () => clearInterval(interval);
   }, [payload.state]);
 
-  const sendCommand = (cmd: "pause" | "resume" | "stop" | "cancel") => {
+  const sendCommand = (cmd: "start" | "pause" | "resume" | "stop" | "cancel") => {
     emit(`overlay:${cmd}`);
   };
 
+  const isIdle = payload.state === "idle";
   const isProcessing = payload.state === "processing";
   const isPaused = payload.paused;
 
-  const statusLabel = isProcessing
+  const statusLabel = isIdle
+    ? (lang === "ar" ? "اضغط للتسجيل" : "Record")
+    : isProcessing
     ? (lang === "ar" ? "جارٍ المعالجة" : "Processing")
     : isPaused
     ? (lang === "ar" ? "موقوف" : "Paused")
     : (lang === "ar" ? "تسجيل" : "REC");
 
-  const statusColor = isProcessing
+  const statusColor = isIdle
+    ? "var(--accent)"
+    : isProcessing
     ? "var(--accent)"
     : isPaused
     ? "var(--warning)"
@@ -68,17 +73,30 @@ export function ControlBar() {
       style={{ background: "transparent" }}
       dir={isRTL ? "rtl" : "ltr"}
     >
-      <div
-        className="flex items-center gap-2 h-12 px-3 select-none"
-        style={{
-          background: "var(--surface)",
-          border: `1px solid ${isProcessing ? "var(--accent-border)" : "var(--border)"}`,
-          borderRadius: 999,
-          boxShadow: "0 12px 32px -8px rgba(0,0,0,.35)",
-          backdropFilter: "blur(14px)",
-          animation: "overlayPop 0.25s ease-out",
-        }}
-      >
+      {isIdle ? (
+        <button
+          onClick={() => sendCommand("start")}
+          aria-label={lang === "ar" ? "بدء التسجيل" : "Start recording"}
+          className="idle-launch grid place-items-center cursor-pointer"
+          style={{ background: "transparent", border: "none", padding: 10, animation: "overlayPop 0.25s ease-out" }}
+        >
+          <span className="idle-handle">
+            <Mic size={15} strokeWidth={2.5} className="idle-ico" />
+            <span className="idle-label">{lang === "ar" ? "ابدأ التسجيل" : "Start recording"}</span>
+          </span>
+        </button>
+      ) : (
+        <div
+          className="flex items-center gap-2 h-12 px-3 select-none"
+          style={{
+            background: "var(--surface)",
+            border: `1px solid ${isProcessing ? "var(--accent-border)" : "var(--border)"}`,
+            borderRadius: 999,
+            boxShadow: "0 12px 32px -8px rgba(0,0,0,.35)",
+            backdropFilter: "blur(14px)",
+            animation: "overlayPop 0.25s ease-out",
+          }}
+        >
         <div
           data-tauri-drag-region
           className="flex items-center gap-2 px-2 cursor-grab"
@@ -163,7 +181,8 @@ export function ControlBar() {
             <X size={14} strokeWidth={2.5} />
           </IconButton>
         </div>
-      </div>
+        </div>
+        )}
 
       <style>{`
         @keyframes overlayPop {
@@ -171,6 +190,49 @@ export function ControlBar() {
           to { transform: translateY(0) scale(1); opacity: 1; }
         }
         html, body, #root { background: transparent !important; }
+        .idle-handle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          width: 46px;
+          height: 6px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, var(--accent-2), var(--accent));
+          box-shadow: 0 2px 12px -2px var(--accent);
+          opacity: 0.4;
+          overflow: hidden;
+          transition: width .24s ease, height .24s ease, opacity .2s ease, box-shadow .24s ease, transform .12s ease;
+        }
+        .idle-ico {
+          color: #fff;
+          flex-shrink: 0;
+          opacity: 0;
+          transition: opacity .16s ease .06s;
+        }
+        .idle-label {
+          color: #fff;
+          font-family: "Inter", system-ui;
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: .02em;
+          white-space: nowrap;
+          opacity: 0;
+          transition: opacity .16s ease .06s;
+        }
+        .idle-launch:hover .idle-handle {
+          width: 170px;
+          height: 34px;
+          opacity: 1;
+          box-shadow: 0 8px 22px -6px var(--accent);
+        }
+        .idle-launch:hover .idle-ico,
+        .idle-launch:hover .idle-label {
+          opacity: 1;
+        }
+        .idle-launch:active .idle-handle {
+          transform: scale(0.97);
+        }
       `}</style>
     </div>
   );

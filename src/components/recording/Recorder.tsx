@@ -14,7 +14,7 @@ import { useAnalyticsStore } from "../../stores/analyticsStore";
 import { saveHistory } from "../../lib/db";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { setOverlayCommandHandler } from "../../lib/overlayCommands";
 import { showOverlay, hideOverlay, pushOverlayState } from "../../lib/overlayWindow";
 import { setCommandHotkeyHandler } from "../../lib/commandHotkeys";
 import { formatAccelerator, normalizeAccelerator } from "../../lib/hotkey";
@@ -50,7 +50,7 @@ export function Recorder() {
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, [rs.output]);
+  }, [rs.output, rs.state]);
 
   const processAudio = useCallback(async (
     template: Template, base64: string, mimeType: string, durationMs: number,
@@ -71,8 +71,20 @@ export function Recorder() {
     rs.setOutput("");
     rs.setState("processing");
     const processingStart = Date.now();
-    await showOverlay();
-    await pushOverlayState({ state: "processing", paused: false, duration: 0 });
+    const overlayMode = useSettingsStore.getState().settings.overlayMode;
+    // When recording ends: in "always" mode keep the pill on screen showing its
+    // idle launcher; otherwise tuck it away.
+    const settleOverlay = async () => {
+      if (overlayMode === "always") {
+        await pushOverlayState({ state: "idle", paused: false, duration: 0 });
+      } else {
+        await hideOverlay();
+      }
+    };
+    if (overlayMode !== "off") {
+      await showOverlay();
+      await pushOverlayState({ state: "processing", paused: false, duration: 0 });
+    }
 
 
     const MAX_ATTEMPTS = 3;
@@ -109,7 +121,7 @@ export function Recorder() {
         addLog("success", t("log_msg_ready"), t("log_msg_char_count", String(fullText.length)));
 
         if (settings.autoCopy && fullText) {
-          await hideOverlay();
+          if (overlayMode !== "always") await hideOverlay();
           await writeText(fullText);
           addLog("success", t("log_msg_copied"));
           await new Promise((r) => setTimeout(r, 150));
@@ -133,10 +145,11 @@ export function Recorder() {
             output_text: fullText,
             estimated_tokens: Math.floor(fullText.length / 4),
           });
+          await useHistoryStore.getState().load();
           await refreshAnalytics(settings.apiKey || undefined);
         }
 
-        await hideOverlay();
+        await settleOverlay();
         return; // success — exit the retry loop
       } catch (err) {
         if (abortSignal.current) return;
@@ -152,7 +165,7 @@ export function Recorder() {
       rs.setState("error");
     }
 
-    await hideOverlay();
+    await settleOverlay();
   }, [settings, rs, addLog, t]);
 
 
@@ -174,15 +187,24 @@ export function Recorder() {
       hotkeyRef.current = isHotkey;
       rs.reset();
       rs.setState("recording");
-      recorder.onDuration = (ms) => { rs.setDuration(ms); };
+      recorder.onDuration = (ms) => {
+        rs.setDuration(ms);
+        // Push straight from the recorder callback so the overlay timer keeps
+        // ticking even when the Recorder route is unmounted (always-on launcher).
+        if (useSettingsStore.getState().settings.overlayMode !== "off") {
+          void pushOverlayState({ state: "recording", paused: useRecordingStore.getState().paused, duration: ms });
+        }
+      };
       try {
         await recorder.start(settings.audioDeviceId || undefined);
         playBeep("start");
         addLog("info", t("log_msg_mic_ready"));
-        await showOverlay();
-        // Repeat state push after the overlay's webview is up so its listener
-        // doesn't miss the initial transition (cheap, race-safe).
-        await pushOverlayState({ state: "recording", paused: false, duration: 0 });
+        if (useSettingsStore.getState().settings.overlayMode !== "off") {
+          await showOverlay();
+          // Repeat state push after the overlay's webview is up so its listener
+          // doesn't miss the initial transition (cheap, race-safe).
+          await pushOverlayState({ state: "recording", paused: false, duration: 0 });
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         rs.setError(t("rec_mic_error") + ": " + msg);
@@ -193,12 +215,16 @@ export function Recorder() {
 
   const handlePauseToggle = useCallback(() => {
     if (useRecordingStore.getState().state !== "recording") return;
+    const nextPaused = !rs.paused;
     if (rs.paused) {
       recorder.resume();
       rs.setPaused(false);
     } else {
       recorder.pause();
       rs.setPaused(true);
+    }
+    if (useSettingsStore.getState().settings.overlayMode !== "off") {
+      void pushOverlayState({ state: "recording", paused: nextPaused, duration: useRecordingStore.getState().duration });
     }
   }, [rs]);
 
@@ -215,13 +241,6 @@ export function Recorder() {
     });
   }, []);
 
-  // Push current recording state to the floating overlay window
-  useEffect(() => {
-    if (rs.state === "recording" || rs.state === "processing") {
-      pushOverlayState({ state: rs.state, paused: rs.paused, duration: rs.duration });
-    }
-  }, [rs.state, rs.paused, rs.duration]);
-
   // Listen for commands dispatched from the overlay control bar
   const handlersRef = useRef({
     toggle: handleToggle,
@@ -230,16 +249,15 @@ export function Recorder() {
   });
   handlersRef.current = { toggle: handleToggle, pause: handlePauseToggle, abort: handleAbortRecording };
 
+  // Register a persistent handler (module scope, no cleanup) so overlay
+  // commands work from any route — App owns the Tauri listeners and dispatches
+  // here, even when the Recorder route is unmounted.
   useEffect(() => {
-    const unlisten = [
-      listen("overlay:stop", () => { handlersRef.current.toggle(false); }),
-      listen("overlay:pause", () => { handlersRef.current.pause(); }),
-      listen("overlay:resume", () => { handlersRef.current.pause(); }),
-      listen("overlay:cancel", () => { handlersRef.current.abort(); }),
-    ];
-    return () => {
-      unlisten.forEach((p) => p.then((fn) => fn()));
-    };
+    setOverlayCommandHandler((cmd) => {
+      if (cmd === "start" || cmd === "stop") handlersRef.current.toggle(false);
+      else if (cmd === "pause" || cmd === "resume") handlersRef.current.pause();
+      else if (cmd === "cancel") handlersRef.current.abort();
+    });
   }, []);
 
   const handleCancel = useCallback(() => { void doCancel(); }, []);

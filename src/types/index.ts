@@ -52,6 +52,15 @@ export interface Settings {
   autostartHealed: boolean;
   /** False until the user dismisses the one-time "Launch on Startup fixed" notice. */
   seenAutostartNotice: boolean;
+  /**
+   * Floating control-bar (overlay) visibility:
+   * - "recording": only visible while recording/processing (default)
+   * - "always": pinned on screen at all times; click its mic to start recording
+   * - "off": never shown
+   */
+  overlayMode: "recording" | "always" | "off";
+  /** False until the user dismisses the v1.1.0 "What's New" notice. */
+  seenWhatsNew110: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -73,6 +82,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoModeMigrated: false,
   autostartHealed: false,
   seenAutostartNotice: false,
+  overlayMode: "recording",
+  seenWhatsNew110: false,
 };
 
 export const DEFAULT_TEMPLATES: Omit<Template, "created_at" | "updated_at">[] = [

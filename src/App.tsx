@@ -11,8 +11,13 @@ import { LogsPage } from "./components/logs/LogsPage";
 import { AnalyticsPage } from "./components/analytics/AnalyticsPage";
 import { UploadPage } from "./components/recording/UploadPage";
 import { Welcome } from "./components/onboarding/Welcome";
+import { WhatsNew } from "./components/onboarding/WhatsNew";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useTemplatesStore } from "./stores/templatesStore";
+import { useRecordingStore } from "./stores/recordingStore";
+import { showOverlay, hideOverlay, pushOverlayState } from "./lib/overlayWindow";
+import { dispatchOverlayCommand, type OverlayCommand } from "./lib/overlayCommands";
+import { listen } from "@tauri-apps/api/event";
 import { ControlBar } from "./components/recording/ControlBar";
 import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { MilestoneBanner } from "./components/layout/MilestoneBanner";
@@ -28,6 +33,7 @@ export default function App() {
   const { load: loadSettings, settings, loaded, update } = useSettingsStore();
   const { load: loadTemplates, activeTemplateId, templates } = useTemplatesStore();
   const { celebrateMilestone, timeSavedMin, clearCelebrateMilestone } = useAnalyticsStore();
+  const recState = useRecordingStore((s) => s.state);
   const { t } = useLang();
   const [welcomeDone, setWelcomeDone] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
@@ -84,6 +90,32 @@ export default function App() {
       await update({ autostartHealed: true });
     })();
   }, [loaded, isOverlay, settings.autostartHealed, settings.launchOnStartup, update]);
+
+  // Drive the floating overlay's idle baseline from the user's overlayMode.
+  // Visibility *during* recording/processing is owned by the Recorder; here we
+  // only enforce the resting state (always-visible launcher vs hidden) and
+  // react instantly when the setting changes.
+  useEffect(() => {
+    if (isOverlay || !loaded) return;
+    const active = recState === "recording" || recState === "processing";
+    if (active) return;
+    if (settings.overlayMode === "always") {
+      void showOverlay();
+      void pushOverlayState({ state: "idle", paused: false, duration: 0 });
+    } else {
+      void hideOverlay();
+    }
+  }, [isOverlay, loaded, settings.overlayMode, recState]);
+
+  // Own the overlay command listeners at the always-mounted App level (not the
+  // route-scoped Recorder) so the floating bar works from any screen. Commands
+  // are dispatched into the persistent handler the Recorder registers.
+  useEffect(() => {
+    if (isOverlay) return;
+    const cmds: OverlayCommand[] = ["start", "stop", "pause", "resume", "cancel"];
+    const unlisten = cmds.map((c) => listen(`overlay:${c}`, () => dispatchOverlayCommand(c)));
+    return () => { unlisten.forEach((p) => p.then((fn) => fn())); };
+  }, [isOverlay]);
 
   // Apply theme
   useEffect(() => {
@@ -146,6 +178,9 @@ export default function App() {
           />
         ) : (
           <>
+            {loaded && !settings.seenWhatsNew110 && (
+              <WhatsNew onDismiss={() => update({ seenWhatsNew110: true })} />
+            )}
             <Sidebar />
             <main className="flex-1 flex flex-col overflow-hidden">
               {loaded && !settings.seenCancelHotkey && (

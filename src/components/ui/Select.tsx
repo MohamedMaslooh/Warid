@@ -39,16 +39,42 @@ export function Select({
   const [activeIdx, setActiveIdx] = useState<number>(-1);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [pos, setPos] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    placeAbove: boolean;
+  } | null>(null);
 
   const selected = options.find((o) => o.value === value);
 
-  // Position popover under the trigger and recompute on scroll/resize.
+  // Position popover dynamically under or above the trigger and recompute on scroll/resize.
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
     const place = () => {
       const r = triggerRef.current!.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: r.left, width: r.width });
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+      // If space below is less than 190px (popover max-height of 180px + margin)
+      // and space above is larger, place it above.
+      const placeAbove = spaceBelow < 190 && spaceAbove > spaceBelow;
+
+      if (placeAbove) {
+        setPos({
+          bottom: window.innerHeight - r.top + 6,
+          left: r.left,
+          width: r.width,
+          placeAbove: true,
+        });
+      } else {
+        setPos({
+          top: r.bottom + 6,
+          left: r.left,
+          width: r.width,
+          placeAbove: false,
+        });
+      }
     };
     place();
     window.addEventListener("scroll", place, true);
@@ -126,7 +152,8 @@ export function Select({
           dir={dir}
           className="select-popover fixed"
           style={{
-            top: pos.top,
+            top: pos.placeAbove ? "auto" : pos.top,
+            bottom: pos.placeAbove ? pos.bottom : "auto",
             left: pos.left,
             width: pos.width,
           }}

@@ -35,16 +35,26 @@ export function TemplatesPage() {
   const { settings } = useSettingsStore();
   const { t, lang } = useLang();
   const [editing, setEditing] = useState<Template | null>(null);
+  const [original, setOriginal] = useState<Template | null>(null);
   const [saving, setSaving] = useState(false);
   const [hotkeyError, setHotkeyError] = useState<string | null>(null);
 
+  const startEditing = (tpl: Template) => {
+    setEditing(tpl);
+    setOriginal(tpl);
+  };
+
+  const isDirty = !!editing && JSON.stringify(editing) !== JSON.stringify(original);
+  const canSave = isDirty && !!editing?.name.trim() && !!editing?.prompt_body.trim() && !hotkeyError;
+
   const handleSave = async () => {
-    if (!editing || !editing.name.trim() || !editing.prompt_body.trim()) return;
-    if (hotkeyError) return;
+    if (!editing || !canSave) return;
     setSaving(true);
-    await save({ ...editing, updated_at: Date.now() });
+    const saved = { ...editing, updated_at: Date.now() };
+    await save(saved);
     setSaving(false);
-    setEditing(null);
+    setOriginal(saved);
+    setEditing(saved);
   };
 
   useEffect(() => {
@@ -59,20 +69,22 @@ export function TemplatesPage() {
       <header className="page-header">
         <h1 className="page-title">{t("tpl_title")}</h1>
         <div className="flex gap-2">
-          <button onClick={() => setEditing(EMPTY_TEMPLATE())} className="btn-primary">
-            <Plus size={14} strokeWidth={2} /> {t("tpl_new")}
+          <button onClick={handleSave} disabled={!canSave || saving} className="btn-primary">
+            <Save size={16} strokeWidth={1.75} />
+            {saving ? t("tpl_saving") : t("tpl_save")}
           </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-72 shrink-0 overflow-y-auto" style={{ borderInlineStart: "1px solid var(--border)", background: "var(--surface)", backdropFilter: "blur(10px)" }}>
+        <div className="w-72 shrink-0 flex flex-col" style={{ borderInlineStart: "1px solid var(--border)", background: "var(--surface)", backdropFilter: "blur(10px)" }}>
+          <div className="flex-1 overflow-y-auto">
           {templates.map((tpl) => {
             const hk = formatAccelerator(tpl.hotkey);
             const isSelected = editing?.id === tpl.id;
             const isFav = tpl.is_favorite === 1;
             return (
-              <div key={tpl.id} className="p-4 flex items-center justify-between group cursor-pointer transition-colors" style={{ borderBottom: "1px solid var(--border)", background: isSelected ? "var(--accent-soft)" : "transparent" }} onClick={() => setEditing({ ...tpl })}>
+              <div key={tpl.id} className="p-4 flex items-center justify-between group cursor-pointer transition-colors" style={{ borderBottom: "1px solid var(--border)", background: isSelected ? "var(--accent-soft)" : "transparent" }} onClick={() => startEditing({ ...tpl })}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <p className="text-sm font-bold truncate" style={{ color: isSelected ? "var(--accent)" : "var(--text)" }}>{getTemplateName(tpl, lang)}</p>
@@ -84,9 +96,10 @@ export function TemplatesPage() {
                   <button 
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      save({ ...tpl, is_favorite: isFav ? 0 : 1 }); 
+                      save({ ...tpl, is_favorite: isFav ? 0 : 1 });
                       if (editing?.id === tpl.id) {
                         setEditing({ ...editing, is_favorite: isFav ? 0 : 1 });
+                        if (original) setOriginal({ ...original, is_favorite: isFav ? 0 : 1 });
                       }
                     }} 
                     className={`p-1.5 transition-all ${isFav ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} 
@@ -97,8 +110,8 @@ export function TemplatesPage() {
                   <button 
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      remove(tpl.id); 
-                      if (editing?.id === tpl.id) setEditing(null); 
+                      remove(tpl.id);
+                      if (editing?.id === tpl.id) { setEditing(null); setOriginal(null); }
                     }} 
                     className="opacity-0 group-hover:opacity-100 p-1.5 transition-all" 
                     style={{ color: "var(--danger)", borderRadius: 8 }}
@@ -109,6 +122,12 @@ export function TemplatesPage() {
               </div>
             );
           })}
+          </div>
+          <div className="p-3" style={{ borderTop: "1px solid var(--border)" }}>
+            <button onClick={() => startEditing(EMPTY_TEMPLATE())} className="btn-primary w-full justify-center">
+              <Plus size={14} strokeWidth={2} /> {t("tpl_new")}
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -118,7 +137,7 @@ export function TemplatesPage() {
                 <h2 className="text-lg font-bold" style={{ color: "var(--text)" }}>
                   {getTemplateName(editing, lang) || t("tpl_new")}
                 </h2>
-                <button onClick={() => setEditing(null)} className="icon-btn" style={{ width: 32, height: 32 }}>
+                <button onClick={() => { setEditing(null); setOriginal(null); }} className="icon-btn" style={{ width: 32, height: 32 }}>
                   <X size={16} strokeWidth={1.75} />
                 </button>
               </div>
@@ -204,11 +223,6 @@ export function TemplatesPage() {
                   />
                 </label>
               </div>
-
-              <button onClick={handleSave} disabled={saving || !!hotkeyError} className="btn-primary">
-                <Save size={16} strokeWidth={1.75} />
-                {saving ? t("tpl_saving") : t("tpl_save")}
-              </button>
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-sm h-full" style={{ color: "var(--muted)" }}>

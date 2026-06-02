@@ -7,6 +7,8 @@ import {
   BarChart2,
   Upload,
 } from "lucide-react";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useLang } from "../../lib/useLang";
@@ -33,7 +35,7 @@ export function Sidebar() {
         borderInlineStart: "1px solid var(--border)",
       }}
     >
-      <NavLink to="/" className="mb-6 group relative">
+      <TooltipLink to="/" label={t("app_name")} className="mb-6" end>
         <div
           className="w-10 h-10 flex items-center justify-center text-white font-extrabold text-lg"
           style={{
@@ -45,52 +47,96 @@ export function Sidebar() {
         >
           W
         </div>
-        <Tooltip>{t("app_name")}</Tooltip>
-      </NavLink>
+      </TooltipLink>
 
       <nav className="flex flex-col items-center gap-1 flex-1">
         {navItems.map(({ to, icon: Icon, key: navKey }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            className={({ isActive }) =>
-              `nav-icon${isActive ? " active" : ""} group`
-            }
-          >
+          <TooltipLink key={to} to={to} label={t(navKey)} navIcon end={to === "/"}>
             <Icon size={20} strokeWidth={1.75} />
-            <Tooltip>{t(navKey)}</Tooltip>
-          </NavLink>
+          </TooltipLink>
         ))}
       </nav>
 
-      <NavLink
-        to="/settings"
-        className={({ isActive }) =>
-          `nav-icon${isActive ? " active" : ""} group`
-        }
-      >
+      <TooltipLink to="/settings" label={t("nav_settings")} navIcon>
         <Settings size={20} strokeWidth={1.75} />
-        <Tooltip>{t("nav_settings")}</Tooltip>
-      </NavLink>
+      </TooltipLink>
     </aside>
   );
 }
 
-function Tooltip({ children }: { children: React.ReactNode }) {
+function TooltipLink({
+  to,
+  label,
+  children,
+  navIcon = false,
+  end = false,
+  className = "",
+}: {
+  to: string;
+  label: string;
+  children: React.ReactNode;
+  navIcon?: boolean;
+  end?: boolean;
+  className?: string;
+}) {
+  const { isRTL } = useLang();
+  const ref = useRef<HTMLAnchorElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+
+  function show() {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    // Sidebar is on the inline-start edge of content; place tooltip toward content.
+    setPos({
+      x: isRTL ? r.left - 10 : r.right + 10,
+      y: r.top + r.height / 2,
+    });
+  }
+
   return (
-    <div
-      className="absolute text-xs py-1.5 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 font-medium"
-      style={{
-        background: "var(--text)",
-        color: "var(--bg)",
-        borderRadius: 8,
-        insetInlineEnd: "calc(100% + 8px)",
-        top: "50%",
-        transform: "translateY(-50%)",
-      }}
+    <NavLink
+      ref={ref}
+      to={to}
+      end={end}
+      onMouseEnter={show}
+      onMouseLeave={() => setPos(null)}
+      className={({ isActive }) =>
+        `${navIcon ? `nav-icon${isActive ? " active" : ""}` : "relative"} ${className}`.trim()
+      }
     >
       {children}
-    </div>
+      {pos && createPortal(
+        <div
+          role="tooltip"
+          dir={isRTL ? "rtl" : "ltr"}
+          style={{
+            position: "fixed",
+            left: pos.x,
+            top: pos.y,
+            transform: `translateY(-50%) ${isRTL ? "translateX(-100%)" : ""}`,
+            zIndex: 9999,
+            pointerEvents: "none",
+            padding: "7px 12px",
+            borderRadius: 10,
+            background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+            backdropFilter: "blur(14px) saturate(140%)",
+            WebkitBackdropFilter: "blur(14px) saturate(140%)",
+            border: "1px solid var(--accent-border)",
+            boxShadow:
+              "0 12px 32px -8px rgba(0,0,0,.55), 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent)",
+            color: "var(--text)",
+            fontSize: 12.5,
+            fontWeight: 700,
+            lineHeight: 1.2,
+            whiteSpace: "nowrap",
+            fontFamily: '"Inter", system-ui, sans-serif',
+          }}
+        >
+          {label}
+        </div>,
+        document.body,
+      )}
+    </NavLink>
   );
 }
