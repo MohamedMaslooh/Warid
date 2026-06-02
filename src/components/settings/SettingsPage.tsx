@@ -10,12 +10,14 @@ import { Select } from "../ui/Select";
 import { HotkeyField } from "../ui/HotkeyField";
 import { useLang } from "../../lib/useLang";
 import { setLaunchOnStartup } from "../../lib/autostart";
+import { useUpdateStore } from "../../stores/updateStore";
 
 type Tab = "keys" | "models" | "prefs" | "about";
 
 export function SettingsPage() {
   const { settings, update } = useSettingsStore();
   const { getRequestCountToday } = useRequestTrackerStore();
+  const { phase: updPhase, check: checkUpdate } = useUpdateStore();
   const { t } = useLang();
   const [activeTab, setActiveTab] = useState<Tab>("keys");
   const [showGeminiKey, setShowGeminiKey] = useState(false);
@@ -384,6 +386,42 @@ export function SettingsPage() {
                 >
                   mohamedmaslooh.github.io/Warid
                 </a>
+              </div>
+            </div>
+
+            {/* Updates */}
+            <div className="space-y-3 rounded-xl p-4" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              {sectionHeading(t("settings_updates"))}
+              <label className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-sm" style={{ color: "var(--text)" }}>{t("settings_auto_download")}</span>
+                  <p className="text-xs" style={{ color: "var(--muted)" }}>{t("settings_auto_download_desc")}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.autoDownloadUpdates}
+                  onChange={(e) => void update({ autoDownloadUpdates: e.target.checked })}
+                  className="w-4 h-4 shrink-0"
+                  style={{ accentColor: "var(--accent)" }}
+                />
+              </label>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs" style={{ color: "var(--muted)" }}>
+                  {updPhase === "checking"
+                    ? t("upd_checking")
+                    : updPhase === "uptodate"
+                      ? t("upd_uptodate")
+                      : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void checkUpdate(settings.autoDownloadUpdates)}
+                  disabled={updPhase === "checking" || updPhase === "downloading"}
+                  className="btn-secondary shrink-0"
+                  style={{ width: "auto" }}
+                >
+                  {t("settings_check_updates")}
+                </button>
               </div>
             </div>
           </section>

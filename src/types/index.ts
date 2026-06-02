@@ -61,6 +61,10 @@ export interface Settings {
   overlayMode: "recording" | "always" | "off";
   /** False until the user dismisses the v1.1.1 "What's New" notice. */
   seenWhatsNew111: boolean;
+  /** False until the user dismisses the v1.1.2 "What's New" notice (covers 1.1.0–1.1.2). */
+  seenWhatsNew112: boolean;
+  /** When true, updates download silently in the background and only prompt to restart. */
+  autoDownloadUpdates: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -84,6 +88,8 @@ export const DEFAULT_SETTINGS: Settings = {
   seenAutostartNotice: false,
   overlayMode: "recording",
   seenWhatsNew111: false,
+  seenWhatsNew112: false,
+  autoDownloadUpdates: false,
 };
 
 export const DEFAULT_TEMPLATES: Omit<Template, "created_at" | "updated_at">[] = [

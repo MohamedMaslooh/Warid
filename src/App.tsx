@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getVersion } from "@tauri-apps/api/app";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Recorder } from "./components/recording/Recorder";
@@ -21,7 +20,7 @@ import { listen } from "@tauri-apps/api/event";
 import { ControlBar } from "./components/recording/ControlBar";
 import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { MilestoneBanner } from "./components/layout/MilestoneBanner";
-import { fetchLatestVersion, isNewer } from "./lib/updateCheck";
+import { useUpdateStore } from "./stores/updateStore";
 import { useAnalyticsStore } from "./stores/analyticsStore";
 import { syncCancelHotkey } from "./lib/cancelHotkey";
 import { reconcileLaunchOnStartup } from "./lib/autostart";
@@ -36,8 +35,20 @@ export default function App() {
   const recState = useRecordingStore((s) => s.state);
   const { t } = useLang();
   const [welcomeDone, setWelcomeDone] = useState(false);
-  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
-  const [updateDismissed, setUpdateDismissed] = useState(false);
+  const {
+    version: updateVersion,
+    phase: updPhase,
+    downloaded: updDownloaded,
+    total: updTotal,
+    dismissed: updateDismissed,
+    silent: updSilent,
+    check: checkUpdate,
+    download: downloadUpdate,
+    restart: restartUpdate,
+    dismiss: dismissUpdate,
+  } = useUpdateStore();
+
+  const recBusy = recState === "recording" || recState === "processing";
 
   useEffect(() => {
     (async () => {
@@ -45,15 +56,13 @@ export default function App() {
     })();
   }, []);
 
-  // Check for a newer GitHub release once on startup
+  // Check for an update once on startup. In dev there's no installed binary to
+  // replace, so skip entirely. When auto-download is on, the store kicks off
+  // the download immediately after a hit.
   useEffect(() => {
-    if (isOverlay) return;
-    (async () => {
-      const current = await getVersion();
-      const latest = await fetchLatestVersion();
-      if (latest && isNewer(latest, current)) setUpdateVersion(latest);
-    })();
-  }, []);
+    if (isOverlay || !loaded || import.meta.env.DEV) return;
+    void checkUpdate(settings.autoDownloadUpdates);
+  }, [isOverlay, loaded]);
 
   useEffect(() => {
     if (!loaded || isOverlay) return;
@@ -146,6 +155,18 @@ export default function App() {
   const showWelcome =
     loaded && !welcomeDone && (settings.firstRun || !settings.apiKey);
 
+  // Only surface the banner for actionable phases the user can respond to.
+  // A silent (auto) download stays hidden until it's ready to install (or fails)
+  // — the manual path shows the "available" prompt and live download progress.
+  const showUpdateBanner =
+    !updateDismissed &&
+    (updSilent
+      ? updPhase === "ready" || updPhase === "error"
+      : updPhase === "available" ||
+        updPhase === "downloading" ||
+        updPhase === "ready" ||
+        updPhase === "error");
+
   return (
     <BrowserRouter>
       <div
@@ -154,13 +175,22 @@ export default function App() {
         dir={settings.uiLanguage === "en" ? "ltr" : "rtl"}
       >
         {/* Floating toast stack — fixed top-center, above all content */}
-        {!showWelcome && !isOverlay && (updateVersion && !updateDismissed || !!celebrateMilestone) && (
+        {!showWelcome && !isOverlay && (showUpdateBanner || !!celebrateMilestone) && (
           <div
             className="fixed flex flex-col gap-2 z-50 items-center"
             style={{ top: 12, left: "50%", transform: "translateX(-50%)" }}
           >
-            {updateVersion && !updateDismissed && (
-              <UpdateBanner version={updateVersion} onDismiss={() => setUpdateDismissed(true)} />
+            {showUpdateBanner && updateVersion && (
+              <UpdateBanner
+                version={updateVersion}
+                phase={updPhase as "available" | "downloading" | "ready" | "error"}
+                downloaded={updDownloaded}
+                total={updTotal}
+                restartBlocked={recBusy}
+                onDownload={downloadUpdate}
+                onRestart={restartUpdate}
+                onDismiss={dismissUpdate}
+              />
             )}
             {celebrateMilestone && (
               <MilestoneBanner
@@ -178,8 +208,8 @@ export default function App() {
           />
         ) : (
           <>
-            {loaded && !settings.seenWhatsNew111 && (
-              <WhatsNew onDismiss={() => update({ seenWhatsNew111: true })} />
+            {loaded && !settings.seenWhatsNew112 && (
+              <WhatsNew onDismiss={() => update({ seenWhatsNew112: true, seenWhatsNew111: true })} />
             )}
             <Sidebar />
             <main className="flex-1 flex flex-col overflow-hidden">

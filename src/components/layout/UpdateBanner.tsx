@@ -1,13 +1,40 @@
 import { X, ArrowUpCircle } from "lucide-react";
 import { useLang } from "../../lib/useLang";
 
+type Phase = "available" | "downloading" | "ready" | "error";
+
 interface Props {
   version: string;
+  phase: Phase;
+  downloaded?: number;
+  total?: number | null;
+  /** Block the restart action (e.g. while a recording is in progress). */
+  restartBlocked?: boolean;
+  onDownload: () => void;
+  onRestart: () => void;
   onDismiss: () => void;
 }
 
-export function UpdateBanner({ version, onDismiss }: Props) {
+export function UpdateBanner({
+  version,
+  phase,
+  downloaded = 0,
+  total = null,
+  restartBlocked = false,
+  onDownload,
+  onRestart,
+  onDismiss,
+}: Props) {
   const { t } = useLang();
+
+  const pct = total && total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : null;
+
+  const title =
+    phase === "ready"
+      ? t("upd_ready")
+      : phase === "error"
+        ? t("upd_error")
+        : t("upd_available");
 
   return (
     <div
@@ -31,20 +58,65 @@ export function UpdateBanner({ version, onDismiss }: Props) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text)" }}>
-          {t("upd_available")}
+          {title}
         </p>
         <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
-          {t("upd_desc", version)}
+          {phase === "downloading"
+            ? pct !== null
+              ? `${t("upd_downloading")} ${pct}%`
+              : t("upd_downloading")
+            : t("upd_desc", version)}
         </p>
-        <a
-          href="https://mohamedmaslooh.github.io/Warid/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block mt-3 px-4 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-85"
-          style={{ background: "var(--accent)", color: "#fff" }}
-        >
-          {t("upd_download")}
-        </a>
+
+        {phase === "downloading" && (
+          <div
+            className="mt-2 h-1.5 rounded-full overflow-hidden"
+            style={{ background: "var(--accent-soft)" }}
+          >
+            <div
+              className="h-full rounded-full transition-[width] duration-150"
+              style={{
+                width: pct !== null ? `${pct}%` : "40%",
+                background: "var(--accent)",
+                animation: pct === null ? "indeterminate 1.1s ease-in-out infinite" : undefined,
+              }}
+            />
+          </div>
+        )}
+
+        {phase === "available" && (
+          <button
+            type="button"
+            onClick={onDownload}
+            className="inline-block mt-3 px-4 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-85"
+            style={{ background: "var(--accent)", color: "#fff" }}
+          >
+            {t("upd_download")}
+          </button>
+        )}
+
+        {phase === "ready" && (
+          <button
+            type="button"
+            onClick={onRestart}
+            disabled={restartBlocked}
+            className="inline-block mt-3 px-4 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: "var(--accent)", color: "#fff" }}
+          >
+            {restartBlocked ? t("upd_restart_blocked") : t("upd_restart")}
+          </button>
+        )}
+
+        {phase === "error" && (
+          <button
+            type="button"
+            onClick={onDownload}
+            className="inline-block mt-3 px-4 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-85"
+            style={{ background: "var(--accent)", color: "#fff" }}
+          >
+            {t("upd_retry")}
+          </button>
+        )}
       </div>
       <button
         type="button"

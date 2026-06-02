@@ -1,4 +1,4 @@
-import { Mic, Pin, EyeOff, X, Sparkles } from "lucide-react";
+import { Mic, Pin, EyeOff, X, Sparkles, DownloadCloud } from "lucide-react";
 import { useLang } from "../../lib/useLang";
 
 interface Props {
@@ -53,16 +53,23 @@ export function WhatsNew({ onDismiss }: Props) {
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-4">
-          {/* Main feature */}
+        <div className="p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "min(70vh, 560px)" }}>
+          {/* New in 1.1.2 — in-app updates */}
+          <FeatureCard
+            icon={<DownloadCloud size={18} strokeWidth={1.75} />}
+            title={t("wn_update_t")}
+            body={t("wn_update_b")}
+            accent
+          />
+
+          {/* New in 1.1.0 — floating recording capsule */}
           <FeatureCard
             icon={<Mic size={18} strokeWidth={1.75} />}
             title={t("wn_capsule_t")}
             body={t("wn_capsule_b")}
-            accent
           />
 
-          {/* Sub-options */}
+          {/* Capsule sub-options */}
           <div className="grid grid-cols-2 gap-3">
             <FeatureCard
               icon={<Pin size={15} strokeWidth={1.75} />}

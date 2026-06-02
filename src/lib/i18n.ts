@@ -140,6 +140,18 @@ export const translations = {
     upd_desc:      "الإصدار {0} جاهز للتحميل",
     upd_download:  "تحميل",
     upd_dismiss:   "تجاهل",
+    upd_downloading: "جارٍ التنزيل…",
+    upd_ready:       "التحديث جاهز للتثبيت",
+    upd_restart:     "إعادة التشغيل للتثبيت",
+    upd_restart_blocked: "أنهِ التسجيل أولاً",
+    upd_error:       "فشل التحديث",
+    upd_retry:       "إعادة المحاولة",
+    upd_checking:    "جارٍ التحقق من التحديثات…",
+    upd_uptodate:    "أنت تستخدم أحدث إصدار",
+    settings_updates:       "التحديثات",
+    settings_auto_download: "تنزيل التحديثات تلقائيًا",
+    settings_auto_download_desc: "نزّل التحديثات في الخلفية ثم اطلب إعادة التشغيل للتثبيت",
+    settings_check_updates: "التحقق من وجود تحديثات",
 
     // Milestone celebration banner
     ms_banner_title: "أنجزت {0} كلمة!",
@@ -301,8 +313,10 @@ export const translations = {
     upload_add_files: "إضافة ملفات",
 
     // What's New — v1.1.0
-    wn_title:        "الجديد في وارِد 1.1.0",
+    wn_title:        "الجديد في وارِد 1.1.2",
     wn_dismiss:      "فهمت",
+    wn_update_t:     "تحديثات تلقائية داخل التطبيق",
+    wn_update_b:     "لم تعد بحاجة لزيارة الموقع. عند توفر إصدار جديد ينبّهك وارِد، فتنزّله بنقرة واحدة من داخل البرنامج ثم يعيد التشغيل ليثبّته. يمكنك أيضاً تفعيل التنزيل التلقائي من الإعدادات ← حول.",
     wn_capsule_t:    "شريط التسجيل العائم",
     wn_capsule_b:    "يظهر الآن شريط صغير عائم أسفل الشاشة أثناء التسجيل، يعرض الحالة والمؤقت وأزرار التحكم. بشكل افتراضي يظهر فقط أثناء التسجيل ويختفي عند انتهائه.",
     wn_capsule_always_t: "ابقه ظاهراً دائماً",
@@ -446,6 +460,18 @@ export const translations = {
     upd_desc:      "Version {0} is ready to download",
     upd_download:  "Download",
     upd_dismiss:   "Dismiss",
+    upd_downloading: "Downloading…",
+    upd_ready:       "Update ready to install",
+    upd_restart:     "Restart to install",
+    upd_restart_blocked: "Finish recording first",
+    upd_error:       "Update failed",
+    upd_retry:       "Retry",
+    upd_checking:    "Checking for updates…",
+    upd_uptodate:    "You're on the latest version",
+    settings_updates:       "Updates",
+    settings_auto_download: "Auto-download updates",
+    settings_auto_download_desc: "Download updates in the background, then prompt to restart and install",
+    settings_check_updates: "Check for updates",
 
     // Milestone celebration banner
     ms_banner_title: "{0} words — nice work!",
@@ -600,8 +626,10 @@ export const translations = {
     upload_add_files: "Add files",
 
     // What's New — v1.1.0
-    wn_title:        "What's New in Warid 1.1.0",
+    wn_title:        "What's New in Warid 1.1.2",
     wn_dismiss:      "Got it",
+    wn_update_t:     "In-app automatic updates",
+    wn_update_b:     "No more visiting the website. When a new version is out, Warid notifies you, downloads it in one click from inside the app, and restarts to install it. You can also turn on silent auto-download in Settings → About.",
     wn_capsule_t:    "Floating Recording Capsule",
     wn_capsule_b:    "A small floating bar now appears at the bottom of your screen while recording, showing status, a live timer, and pause/stop controls. By default it shows only during recording and disappears when done.",
     wn_capsule_always_t: "Keep it always visible",
