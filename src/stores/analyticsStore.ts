@@ -18,7 +18,11 @@ const TYPING_WPM = 40;
 const SPEECH_WPM = 130;
 
 // Milestones in total word count that trigger an AI analysis
-const MILESTONES = [100, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000];
+const MILESTONES = [
+  100, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000,
+  150_000, 200_000, 250_000, 300_000, 350_000, 400_000, 450_000, 500_000,
+  550_000, 600_000, 650_000, 700_000, 750_000, 800_000, 850_000, 900_000, 950_000, 1_000_000
+];
 
 function nextMilestone(wordCount: number): number | null {
   return MILESTONES.find((m) => m > wordCount) ?? null;
@@ -41,6 +45,7 @@ interface AnalyticsStore {
   totalDurationMs: number;
   totalSessions: number;
   timeSavedMin: number;
+  timeSavedTodayMin: number;
   effectiveWpm: number;
   nextMilestone: number | null;
   milestones: ParsedMilestone[];
@@ -88,6 +93,7 @@ export const useAnalyticsStore = create<AnalyticsStore>((set, get) => ({
   totalDurationMs: 0,
   totalSessions: 0,
   timeSavedMin: 0,
+  timeSavedTodayMin: 0,
   effectiveWpm: 0,
   nextMilestone: MILESTONES[0],
   milestones: [],
@@ -115,6 +121,13 @@ export const useAnalyticsStore = create<AnalyticsStore>((set, get) => ({
 
     const { totalWords, totalDurationMs, totalSessions, texts } = stats;
     const timeSavedMin = timeSavedMinutes(totalWords);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMidnight = today.getTime();
+    const todayActivity = dailyActivity.find((d) => d.day === todayMidnight);
+    const wordsToday = todayActivity ? todayActivity.words : 0;
+    const timeSavedTodayMin = timeSavedMinutes(wordsToday);
 
     // Effective WPM: how fast the user "types" via dictation
     // = output words / recording time in minutes
@@ -151,6 +164,7 @@ export const useAnalyticsStore = create<AnalyticsStore>((set, get) => ({
       totalDurationMs,
       totalSessions,
       timeSavedMin,
+      timeSavedTodayMin,
       effectiveWpm,
       nextMilestone: nextMilestone(totalWords),
       milestones,

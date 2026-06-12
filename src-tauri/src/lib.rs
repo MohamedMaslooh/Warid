@@ -59,16 +59,32 @@ fn update_tray_language(app: tauri::AppHandle, lang: String) {
 }
 
 #[tauri::command]
-fn paste_at_cursor(app: tauri::AppHandle) {
-    use enigo::{Direction, Enigo, Key, Keyboard, Settings};
+async fn paste_at_cursor(app: tauri::AppHandle) -> Result<(), String> {
+    // The focus juggling and sleeps below MUST run off the main thread. Sync
+    // Tauri commands execute on the event loop; blocking it freezes the UI and
+    // defers our own minimize() dispatch until after the command returns, so
+    // whenever a Warid window held the foreground the old code saw "Warid still
+    // in front" and silently skipped the paste.
+    match tauri::async_runtime::spawn_blocking(move || paste_at_cursor_impl(app)).await {
+        Ok(result) => result,
+        Err(e) => Err(format!("paste task failed: {e}")),
+    }
+}
+
+fn paste_at_cursor_impl(app: tauri::AppHandle) -> Result<(), String> {
     use std::thread::sleep;
     use std::time::Duration;
 
     #[cfg(target_os = "windows")]
     {
+        use std::time::Instant;
         use windows::Win32::Foundation::HWND;
         use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
-        use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+        use windows::Win32::UI::Input::KeyboardAndMouse::{
+            GetAsyncKeyState, MapVirtualKeyW, SendInput, SetFocus, INPUT, INPUT_0,
+            INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC,
+            VIRTUAL_KEY, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT, VK_V,
+        };
         use windows::Win32::UI::WindowsAndMessaging::{
             GetForegroundWindow, GetWindow, GetWindowThreadProcessId, IsIconic,
             IsWindowVisible, SetForegroundWindow, GW_HWNDNEXT,
@@ -121,7 +137,7 @@ fn paste_at_cursor(app: tauri::AppHandle) {
         // If we still have no target, bail before sending keystrokes — otherwise
         // Ctrl+V lands in Warid itself or wherever the OS decides.
         if target_hwnd.0.is_null() || is_warid(target_hwnd) {
-            return;
+            return Err("no target window to paste into".to_string());
         }
 
         // Step 3: Only minimize Warid if it was actually the foreground.
@@ -137,40 +153,103 @@ fn paste_at_cursor(app: tauri::AppHandle) {
         // bypasses Windows' SetForegroundWindow lock. Without this, after
         // Warid grabs the foreground once, the OS can silently refuse our
         // subsequent SetForegroundWindow calls.
-        unsafe {
+        let force_focus = |target: HWND| unsafe {
             let mut _pid: u32 = 0;
-            let target_tid = GetWindowThreadProcessId(target_hwnd, Some(&mut _pid));
+            let target_tid = GetWindowThreadProcessId(target, Some(&mut _pid));
             let current_tid = GetCurrentThreadId();
             if target_tid != 0 && target_tid != current_tid {
                 let _ = AttachThreadInput(current_tid, target_tid, true);
-                let _ = SetForegroundWindow(target_hwnd);
-                let _ = SetFocus(Some(target_hwnd));
+                let _ = SetForegroundWindow(target);
+                let _ = SetFocus(Some(target));
                 let _ = AttachThreadInput(current_tid, target_tid, false);
             } else {
-                let _ = SetForegroundWindow(target_hwnd);
+                let _ = SetForegroundWindow(target);
+            }
+        };
+        force_focus(target_hwnd);
+
+        // Step 5: Poll until a non-Warid window actually holds the foreground,
+        // re-forcing focus while we wait. Focus transitions on a busy system
+        // routinely take longer than a fixed 80ms sleep, and a single
+        // SetForegroundWindow can be dropped while our minimize is in flight.
+        let focus_deadline = Instant::now() + Duration::from_millis(600);
+        loop {
+            let fg = unsafe { GetForegroundWindow() };
+            if !fg.0.is_null() && !is_warid(fg) {
+                break;
+            }
+            if Instant::now() >= focus_deadline {
+                return Err("target window never took the foreground".to_string());
+            }
+            sleep(Duration::from_millis(40));
+            force_focus(target_hwnd);
+        }
+
+        // Builds a keyboard INPUT with both the virtual-key code and its scan
+        // code. VK codes (not Unicode characters) are what apps match Ctrl+V
+        // accelerators against, and they are independent of the active keyboard
+        // layout — Arabic layout included.
+        fn key_event(vk: VIRTUAL_KEY, up: bool) -> INPUT {
+            let scan = unsafe { MapVirtualKeyW(vk.0 as u32, MAPVK_VK_TO_VSC) } as u16;
+            INPUT {
+                r#type: INPUT_KEYBOARD,
+                Anonymous: INPUT_0 {
+                    ki: KEYBDINPUT {
+                        wVk: vk,
+                        wScan: scan,
+                        dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
+                        time: 0,
+                        dwExtraInfo: 0,
+                    },
+                },
             }
         }
-        sleep(Duration::from_millis(80));
+        let is_down =
+            |vk: VIRTUAL_KEY| (unsafe { GetAsyncKeyState(vk.0 as i32) } as u16 & 0x8000) != 0;
 
-        // Step 5: Verify the target really is in front before pressing Ctrl+V.
-        let now_foreground = unsafe { GetForegroundWindow() };
-        if now_foreground.0.is_null() || is_warid(now_foreground) {
-            return;
+        // Step 6: The stop-recording hotkey means the user may still be holding
+        // modifier keys; held Shift/Alt/Win would turn our Ctrl+V into a
+        // different chord. Wait for them to be released, then force-release
+        // anything still held.
+        const MODIFIERS: [VIRTUAL_KEY; 5] = [VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN];
+        let mod_deadline = Instant::now() + Duration::from_millis(1000);
+        while MODIFIERS.iter().any(|&vk| is_down(vk)) && Instant::now() < mod_deadline {
+            sleep(Duration::from_millis(20));
+        }
+        let stuck: Vec<INPUT> = MODIFIERS
+            .iter()
+            .filter(|&&vk| is_down(vk))
+            .map(|&vk| key_event(vk, true))
+            .collect();
+        if !stuck.is_empty() {
+            unsafe { SendInput(&stuck, std::mem::size_of::<INPUT>() as i32) };
+            sleep(Duration::from_millis(20));
         }
 
-        // Step 6: Send Ctrl+V.
-        if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
-            let _ = enigo.key(Key::Control, Direction::Press);
-            sleep(Duration::from_millis(30));
-            let _ = enigo.key(Key::Unicode('v'), Direction::Click);
-            sleep(Duration::from_millis(30));
-            let _ = enigo.key(Key::Control, Direction::Release);
+        // Step 7: Send Ctrl+V as one atomic SendInput batch so no real user
+        // input can interleave between the down/up events.
+        let combo = [
+            key_event(VK_CONTROL, false),
+            key_event(VK_V, false),
+            key_event(VK_V, true),
+            key_event(VK_CONTROL, true),
+        ];
+        let sent = unsafe { SendInput(&combo, std::mem::size_of::<INPUT>() as i32) };
+        if sent != combo.len() as u32 {
+            return Err(format!(
+                "SendInput injected only {} of {} events (input blocked?)",
+                sent,
+                combo.len()
+            ));
         }
+        return Ok(());
     }
 
     // Non-Windows fallback (original behaviour).
     #[cfg(not(target_os = "windows"))]
     {
+        use enigo::{Direction, Enigo, Key, Keyboard, Settings};
+
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.minimize();
         }
@@ -182,6 +261,7 @@ fn paste_at_cursor(app: tauri::AppHandle) {
             sleep(Duration::from_millis(30));
             let _ = enigo.key(Key::Control, Direction::Release);
         }
+        return Ok(());
     }
 }
 

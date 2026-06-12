@@ -18,15 +18,33 @@ const MILESTONES_CONFIG: Array<{
   short: string;
   Icon: React.ElementType;
 }> = [
-  { at: 100,     labelKey: "ms_100",    short: "100",  Icon: AudioLines },
-  { at: 500,     labelKey: "ms_500",    short: "500",  Icon: Rocket     },
-  { at: 1_000,   labelKey: "ms_1000",   short: "1K",   Icon: Star       },
-  { at: 2_500,   labelKey: "ms_2500",   short: "2.5K", Icon: Flame      },
-  { at: 5_000,   labelKey: "ms_5000",   short: "5K",   Icon: Gem        },
-  { at: 10_000,  labelKey: "ms_10000",  short: "10K",  Icon: Trophy     },
-  { at: 25_000,  labelKey: "ms_25000",  short: "25K",  Icon: Sparkles   },
-  { at: 50_000,  labelKey: "ms_50000",  short: "50K",  Icon: Target     },
-  { at: 100_000, labelKey: "ms_100000", short: "100K", Icon: Crown      },
+  { at: 100,       labelKey: "ms_100",      short: "100",  Icon: AudioLines },
+  { at: 500,       labelKey: "ms_500",      short: "500",  Icon: Rocket     },
+  { at: 1_000,     labelKey: "ms_1000",     short: "1K",   Icon: Star       },
+  { at: 2_500,     labelKey: "ms_2500",     short: "2.5K", Icon: Flame      },
+  { at: 5_000,     labelKey: "ms_5000",     short: "5K",   Icon: Gem        },
+  { at: 10_000,    labelKey: "ms_10000",    short: "10K",  Icon: Trophy     },
+  { at: 25_000,    labelKey: "ms_25000",    short: "25K",  Icon: Sparkles   },
+  { at: 50_000,    labelKey: "ms_50000",    short: "50K",  Icon: Target     },
+  { at: 100_000,   labelKey: "ms_100000",   short: "100K", Icon: Crown      },
+  { at: 150_000,   labelKey: "ms_150000",   short: "150K", Icon: Rocket     },
+  { at: 200_000,   labelKey: "ms_200000",   short: "200K", Icon: Star       },
+  { at: 250_000,   labelKey: "ms_250000",   short: "250K", Icon: Flame      },
+  { at: 300_000,   labelKey: "ms_300000",   short: "300K", Icon: Gem        },
+  { at: 350_000,   labelKey: "ms_350000",   short: "350K", Icon: Trophy     },
+  { at: 400_000,   labelKey: "ms_400000",   short: "400K", Icon: Sparkles   },
+  { at: 450_000,   labelKey: "ms_450000",   short: "450K", Icon: Target     },
+  { at: 500_000,   labelKey: "ms_500000",   short: "500K", Icon: Crown      },
+  { at: 550_000,   labelKey: "ms_550000",   short: "550K", Icon: Rocket     },
+  { at: 600_000,   labelKey: "ms_600000",   short: "600K", Icon: Star       },
+  { at: 650_000,   labelKey: "ms_650000",   short: "650K", Icon: Flame      },
+  { at: 700_000,   labelKey: "ms_700000",   short: "700K", Icon: Gem        },
+  { at: 750_000,   labelKey: "ms_750000",   short: "750K", Icon: Trophy     },
+  { at: 800_000,   labelKey: "ms_800000",   short: "800K", Icon: Sparkles   },
+  { at: 850_000,   labelKey: "ms_850000",   short: "850K", Icon: Target     },
+  { at: 900_000,   labelKey: "ms_900000",   short: "900K", Icon: Crown      },
+  { at: 950_000,   labelKey: "ms_950000",   short: "950K", Icon: Star       },
+  { at: 1_000_000, labelKey: "ms_1000000",  short: "1M",   Icon: Crown      },
 ];
 
 const HEATMAP_WEEKS = 26;
@@ -435,24 +453,34 @@ function MilestoneTrack({ totalWords, done }: { totalWords: number; done: Set<nu
   const nextIdx = MILESTONES_CONFIG.findIndex((m) => m.at > totalWords);
   const gradDir = isRTL ? "left" : "right";
 
-  // Line fill position — based on actual progress, not the next milestone slot.
-  // The previous milestone marks the start of the active segment; partial
-  // progress within that segment extends the fill past it (but never to the
-  // next circle, which is only "reached" once totalWords crosses it).
-  const lastDoneIdx = nextIdx === -1 ? MILESTONES_CONFIG.length - 1 : nextIdx - 1;
-  const totalSegments = MILESTONES_CONFIG.length - 1;
+  // Calculate sliding window of 5 visible milestones
+  const windowSize = 5;
+  let startIdx = 0;
+  if (nextIdx === -1) {
+    startIdx = Math.max(0, MILESTONES_CONFIG.length - windowSize);
+  } else {
+    startIdx = Math.max(0, nextIdx - 1);
+  }
+  let endIdx = Math.min(MILESTONES_CONFIG.length - 1, startIdx + windowSize - 1);
+  startIdx = Math.max(0, endIdx - windowSize + 1);
+
+  const visibleMilestones = MILESTONES_CONFIG.slice(startIdx, endIdx + 1);
+  const totalSegments = visibleMilestones.length - 1;
+  const visibleNextIdx = nextIdx === -1 ? -1 : nextIdx - startIdx;
+  const visibleLastDoneIdx = visibleNextIdx === -1 ? visibleMilestones.length - 1 : visibleNextIdx - 1;
+
   let fillPct: number;
   if (nextIdx === -1) {
     fillPct = 100;
-  } else if (lastDoneIdx < 0) {
-    // Haven't reached the first milestone yet — extend from 0 toward it.
-    const firstAt = MILESTONES_CONFIG[0].at;
+  } else if (visibleLastDoneIdx < 0) {
+    // Haven't reached the first visible milestone yet (nextIdx === 0, so startIdx === 0, visibleNextIdx === 0)
+    const firstAt = visibleMilestones[0].at;
     fillPct = Math.max(0, Math.min(1, totalWords / firstAt)) * (1 / totalSegments) * 100;
   } else {
-    const prevAt = MILESTONES_CONFIG[lastDoneIdx].at;
-    const nextAt = MILESTONES_CONFIG[nextIdx].at;
+    const prevAt = visibleMilestones[visibleLastDoneIdx].at;
+    const nextAt = visibleMilestones[visibleNextIdx].at;
     const seg = Math.max(0, Math.min(1, (totalWords - prevAt) / (nextAt - prevAt)));
-    fillPct = ((lastDoneIdx + seg) / totalSegments) * 100;
+    fillPct = ((visibleLastDoneIdx + seg) / totalSegments) * 100;
   }
 
   return (
@@ -478,9 +506,9 @@ function MilestoneTrack({ totalWords, done }: { totalWords: number; done: Set<nu
             }}
           />
           <div className="relative flex justify-between items-center h-full">
-            {MILESTONES_CONFIG.map((m, i) => {
+            {visibleMilestones.map((m, i) => {
               const isDone = done.has(m.at) || totalWords >= m.at;
-              const isCurrent = !isDone && i === nextIdx;
+              const isCurrent = !isDone && i === visibleNextIdx;
               const Icon = m.Icon;
               return (
                 <div
@@ -513,9 +541,9 @@ function MilestoneTrack({ totalWords, done }: { totalWords: number; done: Set<nu
 
         {/* Label row — aligns horizontally with the circles above */}
         <div className="flex justify-between" style={{ paddingInline: 6, marginTop: 10 }}>
-          {MILESTONES_CONFIG.map((m, i) => {
+          {visibleMilestones.map((m, i) => {
             const isDone = done.has(m.at) || totalWords >= m.at;
-            const isCurrent = !isDone && i === nextIdx;
+            const isCurrent = !isDone && i === visibleNextIdx;
             return (
               <span
                 key={m.at}
@@ -701,14 +729,14 @@ function EmptyState() {
 
 export function AnalyticsPage() {
   const {
-    totalWords, totalSessions, timeSavedMin, effectiveWpm,
+    totalWords, totalSessions, timeSavedMin, timeSavedTodayMin, effectiveWpm,
     nextMilestone: next, milestones,
     dailyActivity, currentStreak, paceWordsPerDay, bestDay,
     topWords,
     analysing, loaded, load,
   } = useAnalyticsStore();
   const { settings } = useSettingsStore();
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   useEffect(() => { load(settings.apiKey || undefined); }, [load, settings.apiKey]);
 
@@ -767,7 +795,7 @@ export function AnalyticsPage() {
                   icon={Clock}
                   label={t("anl_time_saved")}
                   value={formatTime(timeSavedMin, t)}
-                  sub={t("anl_vs_typing")}
+                  sub={`${t("anl_vs_typing")} · ${formatTime(timeSavedTodayMin, t)} ${lang === "ar" ? "اليوم" : "today"}`}
                 />
                 <StatCard
                   icon={Zap}
