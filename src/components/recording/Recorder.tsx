@@ -298,7 +298,6 @@ export function Recorder() {
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col overflow-hidden">
-          <OutputHeader output={rs.output} state={rs.state} duration={rs.duration} />
           <StatsBanner />
           <div className="flex-1 overflow-y-auto flex flex-col">
             {rs.state === "error" && (
@@ -535,12 +534,13 @@ function RecentHistory() {
 }
 
 function StatsBanner() {
-  const { totalWords, timeSavedMin, effectiveWpm, loaded, load } = useAnalyticsStore();
+  const { totalWords, timeSavedMin, timeSavedTodayMin, effectiveWpm, loaded, load } = useAnalyticsStore();
   const { settings } = useSettingsStore();
   const { t, lang } = useLang();
   useEffect(() => { if (!loaded) load(settings.apiKey || undefined); }, [loaded, load, settings.apiKey]);
   if (!loaded || totalWords === 0) return null;
   const savedText = timeSavedMin < 1 ? t("time_less_min") : timeSavedMin < 60 ? t("time_min", String(Math.round(timeSavedMin))) : t("time_hour", (timeSavedMin / 60).toFixed(1));
+  const savedTodayText = timeSavedTodayMin < 1 ? t("time_less_min") : timeSavedTodayMin < 60 ? t("time_min", String(Math.round(timeSavedTodayMin))) : t("time_hour", (timeSavedTodayMin / 60).toFixed(1));
   return (
     <div className="flex items-center gap-4 px-5 py-2 shrink-0 text-xs" style={{ borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
       <span className="flex items-center gap-1.5" style={{ color: "var(--accent)" }}>
@@ -556,6 +556,11 @@ function StatsBanner() {
       <span style={{ color: "var(--text-2)" }}>
         <strong style={{ color: "var(--accent)", fontFamily: '"Inter", system-ui' }}>{totalWords.toLocaleString()}</strong>
         {lang === "ar" ? " كلمة" : " words"}
+      </span>
+      <span style={{ color: "var(--border-2)" }}>|</span>
+      <span className="flex items-center gap-1.5" style={{ color: "var(--accent)" }}>
+        <Clock size={12} strokeWidth={2} />
+        <span><strong>{savedTodayText}</strong>{lang === "ar" ? " وُفِّرت اليوم" : " saved today"}</span>
       </span>
     </div>
   );
@@ -611,25 +616,4 @@ function InlineCopyButton({ text, label, copiedLabel, onCopy }: { text: string; 
   );
 }
 
-function OutputHeader({ output, state }: { output: string; state: string; duration: number }) {
-  const { settings } = useSettingsStore();
-  const { t } = useLang();
-  const [copied, setCopied] = useState(false);
-  const copyOutput = async () => {
-    if (output) { await writeText(output); setCopied(true); setTimeout(() => setCopied(false), 2000); }
-  };
-  return (
-    <div className="flex justify-between items-center px-5 py-2.5 shrink-0" style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)", backdropFilter: "blur(10px)" }}>
-      <div className="flex gap-2">
-        <button onClick={copyOutput} disabled={!output} className="chip chip-accent disabled:opacity-40 cursor-pointer" style={{ padding: "5px 10px" }}>
-          <Copy size={12} strokeWidth={2} />
-          {copied ? t("rec_copied") : t("rec_copy")}
-        </button>
-      </div>
-      <div className="flex gap-2 text-xs font-mono items-center" style={{ color: "var(--muted)" }}>
-        {output && <span className="chip">~{Math.floor(output.length / 4)} tokens</span>}
-        {settings.autoCopy && state === "done" && <span className="chip chip-success">{t("rec_copied")}</span>}
-      </div>
-    </div>
-  );
-}
+
