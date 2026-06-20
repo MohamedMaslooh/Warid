@@ -32,6 +32,24 @@ Download from the [website](https://mohamedmaslooh.github.io/Warid/) or directly
 | macOS | `.dmg` (Apple Silicon or Intel) |
 | Linux | `.AppImage` (portable) or `.deb` (Debian/Ubuntu) |
 
+### macOS first launch
+
+Warid is open-source and distributed **unsigned** — it is not enrolled in Apple's paid Developer Program, so it is not notarized. macOS Gatekeeper blocks it on first launch, and **there is a required one-time step to open it.** (This step cannot be avoided without Apple notarization.)
+
+The build is ad-hoc signed, so you should *not* get the dead-end *"Warid is damaged"* error — but you will still see a Gatekeeper warning. Use whichever method matches your macOS version:
+
+**Most reliable (works on every macOS version) — Terminal:**
+
+```bash
+xattr -cr /Applications/Warid.app
+```
+
+Then open Warid normally. (Run it once after moving the app into `/Applications`.)
+
+**macOS 15 (Sequoia) / macOS 26 (Tahoe) and later:** Right-click → Open was removed in these versions. Double-click Warid, dismiss the warning, then go to **System Settings → Privacy & Security**, scroll to the bottom, and click **Open Anyway** (if shown). If it isn't shown, use the Terminal command above.
+
+**macOS 14 (Sonoma) and earlier:** Right-click (or Control-click) `Warid.app` → **Open** → **Open** in the dialog.
+
 ## Getting an API Key
 
 1. Go to [aistudio.google.com](https://aistudio.google.com/apikey)

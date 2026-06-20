@@ -745,6 +745,14 @@ details[open] .faq-q .chev { transform: rotate(180deg); color: var(--accent); }
   font-weight: 600;
 }
 .download-card .dc-alt a:hover { text-decoration: underline; }
+.download-card .dc-note {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  opacity: 0.85;
+}
 
 @media (max-width: 700px) {
   .download-cards { grid-template-columns: 1fr; max-width: 400px; }
