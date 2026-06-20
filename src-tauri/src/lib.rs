@@ -257,7 +257,15 @@ fn paste_at_cursor_impl(app: tauri::AppHandle) -> Result<(), String> {
         if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
             let _ = enigo.key(Key::Control, Direction::Press);
             sleep(Duration::from_millis(30));
-            let _ = enigo.key(Key::Unicode('v'), Direction::Click);
+            // Use the hardware keycode for V (kVK_ANSI_V = 9) rather than
+            // Key::Unicode('v'). Unicode keys force enigo to resolve the char
+            // against the active keyboard layout via the macOS Text Input
+            // Source API (TSMGetInputSourceProperty), which on macOS 14+ aborts
+            // when called off the main thread — and this paste runs inside
+            // spawn_blocking. Key::Other passes the keycode straight through, so
+            // it never touches TIS. Keycode 9 is the physical V key on every
+            // layout (Arabic included), matching the Ctrl+V accelerator.
+            let _ = enigo.key(Key::Other(9), Direction::Click);
             sleep(Duration::from_millis(30));
             let _ = enigo.key(Key::Control, Direction::Release);
         }
