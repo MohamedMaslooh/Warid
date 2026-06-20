@@ -6,6 +6,23 @@ This changelog records every meaningful change to the application — features, 
 
 ---
 
+## [v1.1.4] — 2026-06-20
+
+### Fixed
+
+#### macOS — "Warid is damaged and can't be opened"
+
+- **Problem:** The macOS app was built and released without any code signature. On Apple Silicon, an app with a missing or invalid (linker-only) signature is rejected by Gatekeeper, and on macOS 15 (Sequoia) / 26 (Tahoe) — which enforce this strictly — the download failed on first launch with *"Warid is damaged and can't be opened."* The bundle contents were intact; only the signature was the problem.
+- **Solution:** Configured the bundler to **ad-hoc sign the app on every release** (`bundle.macOS.signingIdentity: "-"` in `tauri.conf.json`), so each build ships with a valid, consistent signature. This removes the dead-end "damaged" error; downloaders now get the standard, recoverable "unverified developer" prompt instead.
+
+### Changed
+
+- Documented the macOS first-launch unlock steps on the README and download page (EN/AR), including the reliable `xattr -cr /Applications/Warid.app` command — right-click → Open was removed in macOS 15 and later.
+
+> Note: a fully seamless launch with no prompt at all still requires an Apple Developer ID certificate + notarization (paid Apple Developer account). Ad-hoc signing is the best free option and fixes the "damaged" failure for everyone.
+
+---
+
 ## [v1.1.3] — 2026-06-12
 
 ### Fixed
