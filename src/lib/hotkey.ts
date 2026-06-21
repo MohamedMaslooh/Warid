@@ -80,12 +80,34 @@ export function acceleratorFromEvent(e: KeyboardEvent): string {
   return [...mods, key].join("+");
 }
 
+const isMac = navigator.userAgent.includes("Mac");
+
+// On macOS, modifiers render as glyphs (⌃⌥⇧⌘) with no separators, in Apple's
+// canonical order, matching how native Mac apps show shortcuts.
+const MAC_SYMBOLS: Record<string, string> = {
+  Control: "⌃",
+  Alt: "⌥",
+  Shift: "⇧",
+  Meta: "⌘",
+  CommandOrControl: "⌘",
+};
+const MAC_MOD_ORDER = ["Control", "Alt", "Shift", "Meta", "CommandOrControl"];
+
 /** Pretty-print an accelerator for display in the UI. */
 export function formatAccelerator(accel: string | null | undefined): string {
   if (!accel) return "";
-  return normalizeAccelerator(accel)
-    .replace("CommandOrControl", "Ctrl")
-    .replace(/\+/g, "+");
+  const normalized = normalizeAccelerator(accel);
+  if (!normalized) return "";
+
+  const parts = normalized.split("+");
+  if (!isMac) {
+    return parts.map((p) => (p === "CommandOrControl" ? "Ctrl" : p)).join("+");
+  }
+
+  const mods = parts.filter((p) => p in MAC_SYMBOLS);
+  const keys = parts.filter((p) => !(p in MAC_SYMBOLS));
+  const glyphs = MAC_MOD_ORDER.filter((m) => mods.includes(m)).map((m) => MAC_SYMBOLS[m]);
+  return [...glyphs, ...keys].join("");
 }
 
 export async function registerCommandHotkey(

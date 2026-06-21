@@ -6,6 +6,36 @@ This changelog records every meaningful change to the application — features, 
 
 ---
 
+## [v1.1.5] — 2026-06-21
+
+### Added
+
+#### Update banner now shows "What's new"
+- When an update is available (or downloaded and waiting to install), the update banner now displays the release notes for the new version, so users can see *what changed* instead of only being told that an update exists.
+- The notes are sourced automatically: the release workflow extracts this changelog's section for the tag and writes it to both the GitHub release body and the `notes` field of `latest.json`, which the app reads via the updater. (`src/components/layout/UpdateBanner.tsx`, `src/stores/updateStore.ts`, `.github/workflows/release.yml`)
+
+### Fixed
+
+> The macOS crash and microphone-permission fixes below were contributed by [@draelwakeel](https://github.com/draelwakeel) in [PR #2](https://github.com/MohamedMaslooh/Warid/pull/2).
+
+#### macOS — crash on auto-paste (off-main-thread Text Input Source call)
+- **Problem:** On macOS 14+ the app crashed (`EXC_BREAKPOINT`/`SIGTRAP`) every time it finished a transcription and tried to paste at the cursor. `enigo`'s `Key::Unicode('v')` resolves the character against the active keyboard layout via the Carbon Text Input Source API (`TSMGetInputSourceProperty`), which aborts the process when called off the main thread — and the paste runs inside `spawn_blocking`.
+- **Solution:** On macOS, inject the V key by hardware keycode (`Key::Other(9)` = `kVK_ANSI_V`), which passes straight through without any Text Input Source lookup. Linux keeps the original `Key::Unicode('v')` path (the abort is macOS-only). (PR #2 by @draelwakeel, `src-tauri/src/lib.rs`)
+
+#### macOS — microphone permission missing on clean installs
+- **Problem:** The bundle shipped without `NSMicrophoneUsageDescription`, so a fresh install never prompted for microphone access and `navigator.mediaDevices` was unavailable.
+- **Solution:** Added `Info.plist` (mic usage string) plus `Entitlements.plist` (audio-input / microphone entitlements) and referenced them from `tauri.conf.json`. (PR #2 by @draelwakeel)
+
+#### macOS — auto-paste used the wrong shortcut
+- Auto-paste now sends **⌘V** (Command) on macOS instead of Ctrl+V, matching the platform's paste shortcut. Other platforms continue to use Ctrl+V. (`src-tauri/src/lib.rs`)
+
+### Changed
+
+- **macOS keyboard shortcuts** are now displayed using native glyphs (⌃ ⌥ ⇧ ⌘) in Apple's canonical order, matching how shortcuts appear in other Mac apps. Windows/Linux still show `Ctrl`, `Alt`, etc. (`src/lib/hotkey.ts`)
+- **Default "Transcribe" prompt** rewritten for Arabic/English code-switching: it now explicitly keeps Arabic in Arabic and English words/terms in English, and forbids translation, notes, or preamble. Existing users still on a previous built-in default are migrated forward automatically; custom-edited prompts are never overwritten. (`src/types/index.ts`, `src/lib/db.ts`)
+
+---
+
 ## [v1.1.4] — 2026-06-20
 
 ### Fixed

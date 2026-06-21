@@ -254,8 +254,14 @@ fn paste_at_cursor_impl(app: tauri::AppHandle) -> Result<(), String> {
             let _ = window.minimize();
         }
         sleep(Duration::from_millis(120));
+        // macOS pastes with Command+V (Meta); Linux/other use Control+V.
+        #[cfg(target_os = "macos")]
+        let paste_mod = Key::Meta;
+        #[cfg(not(target_os = "macos"))]
+        let paste_mod = Key::Control;
+
         if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
-            let _ = enigo.key(Key::Control, Direction::Press);
+            let _ = enigo.key(paste_mod, Direction::Press);
             sleep(Duration::from_millis(30));
             // Use the hardware keycode for V (kVK_ANSI_V = 9) rather than
             // Key::Unicode('v'). Unicode keys force enigo to resolve the char
@@ -264,13 +270,13 @@ fn paste_at_cursor_impl(app: tauri::AppHandle) -> Result<(), String> {
             // when called off the main thread — and this paste runs inside
             // spawn_blocking. Key::Other passes the keycode straight through, so
             // it never touches TIS. Keycode 9 is the physical V key on every
-            // layout (Arabic included), matching the Ctrl+V accelerator.
+            // layout (Arabic included), matching the ⌘V accelerator.
             #[cfg(target_os = "macos")]
             let _ = enigo.key(Key::Other(9), Direction::Click);
             #[cfg(all(unix, not(target_os = "macos")))]
             let _ = enigo.key(Key::Unicode('v'), Direction::Click);
             sleep(Duration::from_millis(30));
-            let _ = enigo.key(Key::Control, Direction::Release);
+            let _ = enigo.key(paste_mod, Direction::Release);
         }
         return Ok(());
     }

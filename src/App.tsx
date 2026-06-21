@@ -37,6 +37,7 @@ export default function App() {
   const [welcomeDone, setWelcomeDone] = useState(false);
   const {
     version: updateVersion,
+    notes: updateNotes,
     phase: updPhase,
     downloaded: updDownloaded,
     total: updTotal,
@@ -184,6 +185,7 @@ export default function App() {
               <UpdateBanner
                 version={updateVersion}
                 phase={updPhase as "available" | "downloading" | "ready" | "error"}
+                notes={updateNotes}
                 downloaded={updDownloaded}
                 total={updTotal}
                 restartBlocked={recBusy}

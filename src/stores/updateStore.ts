@@ -16,6 +16,7 @@ export type UpdatePhase =
 interface UpdateStore {
   update: Update | null;
   version: string | null;
+  notes: string | null;
   phase: UpdatePhase;
   downloaded: number;
   total: number | null;
@@ -37,6 +38,7 @@ interface UpdateStore {
 export const useUpdateStore = create<UpdateStore>((set, get) => ({
   update: null,
   version: null,
+  notes: null,
   phase: "idle",
   downloaded: 0,
   total: null,
@@ -51,10 +53,13 @@ export const useUpdateStore = create<UpdateStore>((set, get) => ({
     set({ phase: "checking" });
     const u = await checkForUpdate();
     if (!u) {
-      set({ phase: "uptodate", update: null, version: null });
+      set({ phase: "uptodate", update: null, version: null, notes: null });
       return;
     }
-    set({ update: u, version: u.version, phase: "available", dismissed: false, silent: auto });
+    // `u.body` carries the release notes (the `notes` field of latest.json,
+    // populated from the changelog by the release workflow) so the banner can
+    // show what actually changed, not just that an update exists.
+    set({ update: u, version: u.version, notes: u.body ?? null, phase: "available", dismissed: false, silent: auto });
     if (auto) void get().download();
   },
 

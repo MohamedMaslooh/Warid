@@ -113,7 +113,7 @@ export const DEFAULT_TEMPLATES: Omit<Template, "created_at" | "updated_at">[] = 
     name_en: "Transcribe",
     icon: "Microphone",
     color: "#FF6B3D",
-    prompt_body: `Transcribe the audio verbatim. Preserve the original language of each word exactly as spoken — if the speaker switches between languages (e.g., Arabic and English), transcribe each word in the language it was spoken. Output the transcription only.`,
+    prompt_body: `Transcribe the recording exactly as it is. Write the Arabic parts in Arabic and the English parts in English. Every English word and term must stay in English exactly as spoken. Output the transcription only, with no translation, notes, or preamble.`,
     output_language: null,
     model: null,
     hotkey: "CommandOrControl+Alt+R",

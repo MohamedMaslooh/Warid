@@ -6,6 +6,9 @@ type Phase = "available" | "downloading" | "ready" | "error";
 interface Props {
   version: string;
   phase: Phase;
+  /** Release notes (markdown) for the pending version, shown so the user can
+   *  see what changed before installing. */
+  notes?: string | null;
   downloaded?: number;
   total?: number | null;
   /** Block the restart action (e.g. while a recording is in progress). */
@@ -15,9 +18,30 @@ interface Props {
   onDismiss: () => void;
 }
 
+// The notes come from the GitHub release body (markdown). Strip the heavier
+// markdown so they read cleanly in the compact toast, without pulling in a
+// full markdown renderer.
+function cleanNotes(md: string): string {
+  return md
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^#{1,6}\s*/, "") // headings
+        .replace(/^\s*[-*]\s+/, "• ") // bullets
+        .replace(/\*\*(.+?)\*\*/g, "$1") // bold
+        .replace(/`([^`]+)`/g, "$1"), // inline code
+    )
+    .filter((line) => line.trim() !== "---") // horizontal rules
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function UpdateBanner({
   version,
   phase,
+  notes = null,
   downloaded = 0,
   total = null,
   restartBlocked = false,
@@ -28,6 +52,11 @@ export function UpdateBanner({
   const { t } = useLang();
 
   const pct = total && total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : null;
+
+  // Show the "what's new" notes before the user commits to installing — i.e.
+  // when an update is available or already downloaded and waiting to install.
+  const cleanedNotes = notes ? cleanNotes(notes) : "";
+  const showNotes = !!cleanedNotes && (phase === "available" || phase === "ready");
 
   const title =
     phase === "ready"
@@ -81,6 +110,28 @@ export function UpdateBanner({
                 animation: pct === null ? "indeterminate 1.1s ease-in-out infinite" : undefined,
               }}
             />
+          </div>
+        )}
+
+        {showNotes && (
+          <div className="mt-2.5">
+            <p
+              className="text-[11px] font-semibold mb-1"
+              style={{ color: "var(--text-2)" }}
+            >
+              {t("upd_whatsnew")}
+            </p>
+            <div
+              className="rounded-lg p-2.5 text-xs leading-relaxed overflow-y-auto"
+              style={{
+                maxHeight: 140,
+                background: "var(--accent-soft)",
+                color: "var(--text-2)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {cleanedNotes}
+            </div>
           </div>
         )}
 

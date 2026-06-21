@@ -53,6 +53,39 @@ jobs:
       - name: Sync version to tauri.conf.json
         run: node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8'));c.version='${{ github.ref_name }}'.replace(/^v/,'');fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(c,null,2)+'\n');"
 
+      # Pull this version's section out of changelog.md so it becomes both the
+      # GitHub release body AND the `notes` field of latest.json — which the app
+      # shows in its update banner ("What's new").
+      - name: Extract release notes from changelog
+        id: notes
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const tag = process.env.TAG;
+            const md = fs.readFileSync("changelog.md", "utf8").replace(/\r/g, "");
+            const lines = md.split("\n");
+            const start = lines.findIndex((l) => l.startsWith("## [" + tag + "]"));
+            let section = [];
+            if (start !== -1) {
+              const rest = lines.slice(start + 1);
+              const end = rest.findIndex((l) => l.startsWith("## ["));
+              section = end === -1 ? rest : rest.slice(0, end);
+              while (section.length && (section[section.length - 1].trim() === "" || section[section.length - 1].trim() === "---")) section.pop();
+            }
+            const body = section.join("\n").trim() || "See the changelog for details.";
+            fs.writeFileSync("RELEASE_NOTES.md", body + "\n");
+          '
+          echo "Extracted notes:"
+          cat RELEASE_NOTES.md
+          {
+            echo "body<<__WARID_NOTES__"
+            cat RELEASE_NOTES.md
+            echo "__WARID_NOTES__"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,6 +94,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Warid ${{ github.ref_name }}"
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

@@ -100,14 +100,27 @@ async function migrate(db: Awaited<ReturnType<typeof Database.load>>) {
     );
   }
 
-  // Update transcribe prompt to preserve original language per-word (only if user hasn't edited it).
-  await db.execute(
-    `UPDATE templates SET prompt_body = ?, updated_at = ? WHERE id = 'transcribe' AND prompt_body = 'Transcribe the audio verbatim. Output the transcription only.'`,
-    [
-      `Transcribe the audio verbatim. Preserve the original language of each word exactly as spoken — if the speaker switches between languages (e.g., Arabic and English), transcribe each word in the language it was spoken. Output the transcription only.`,
-      Date.now(),
-    ]
-  );
+  // Keep the built-in "transcribe" prompt current with the latest default, but only
+  // when the user is still on a previous built-in default — never clobber custom edits.
+  // To ship a new default later: update DEFAULT_TEMPLATES, then add the now-stale prompt
+  // string to priorTranscribeDefaults so existing users are migrated forward.
+  const transcribeDefault = DEFAULT_TEMPLATES.find((t) => t.id === "transcribe")!.prompt_body;
+  const priorTranscribeDefaults = [
+    `Transcribe the audio verbatim. Output the transcription only.`,
+    `Transcribe the audio verbatim. Preserve the original language of each word exactly as spoken — if the speaker switches between languages (e.g., Arabic and English), transcribe each word in the language it was spoken. Output the transcription only.`,
+    `Transcribe the audio verbatim in the exact language each word was spoken — do NOT translate anything. The speaker frequently mixes Arabic and English within the same sentence (code-switching); you MUST keep every word in its original spoken language: write Arabic words in Arabic script and English words in the Latin alphabet, exactly as pronounced. Never convert an English word into Arabic or an Arabic word into English. Keep technical terms, brand names, product names, and acronyms in their original language. Output the transcription only, with no translation, notes, or preamble.`,
+    `Transcribe the audio verbatim. Do NOT translate. Write each word in the SAME language it was spoken: if a word is spoken in English, write it in English letters; if a word is spoken in Arabic, write it in Arabic letters. The speaker mixes Arabic and English in the same sentence (code-switching) — keep that mix exactly in the output. For example, if the speaker says "استخدم الـ API عشان نعمل deploy للـ server", you must write it exactly like that, with "API", "deploy", and "server" in English and the rest in Arabic. Never rewrite an English word in Arabic letters, and never rewrite an Arabic word in English letters. Output the transcription only, with no translation, notes, or preamble.`,
+    `Transcribe the audio verbatim. Do NOT translate, and do NOT transliterate.\n\nThe core rule: every word must be written in the alphabet that the word actually belongs to, not the alphabet of the surrounding sentence.\n- An Arabic word is written in Arabic letters.\n- An English word is written in English (Latin) letters — even when it is spoken in the middle of an Arabic sentence.\n\nSpeakers (especially in technical, medical, scientific, and business topics) constantly drop English words into Arabic speech. When you hear an English word, you MUST write it in its normal English spelling using Latin letters. Never spell an English word using Arabic letters, and never replace it with an Arabic translation.\n\nFor example, if a doctor speaking Arabic says the word "hypertension", you write "hypertension" in Latin letters — NOT "هايبرتنشن" and NOT "ارتفاع ضغط الدم". The same applies to any English term such as "diagnosis", "deploy", "server", "marketing", "deadline", "feedback", etc.\n\nLikewise, never write an Arabic word using English letters.\n\nOutput the transcription only, with no translation, notes, or preamble.`,
+    `Transcribe the audio verbatim. Do NOT translate, and do NOT transliterate.\n\nWrite every word in the alphabet it belongs to, not the alphabet of the surrounding sentence: Arabic words in Arabic letters, English words in Latin letters — even when an English word lands in the middle of an Arabic sentence (common with technical, medical, scientific, and business terms).\n\nExample: if an Arabic speaker says "hypertension", write "hypertension" in Latin letters — NOT "هايبرتنشن" (transliteration) and NOT "ارتفاع ضغط الدم" (translation). The same applies to terms like "diagnosis", "deploy", "server", "deadline", "feedback".\n\nOutput the transcription only, with no translation, notes, or preamble.`,
+    `Transcribe the audio exactly as spoken, word for word. Keep every word in its own language and its own script: write Arabic words in Arabic letters and English words in English (Latin) letters. Do not translate, and do not transliterate. Output the transcription only.`,
+  ];
+  for (const prior of priorTranscribeDefaults) {
+    if (prior === transcribeDefault) continue;
+    await db.execute(
+      `UPDATE templates SET prompt_body = ?, updated_at = ? WHERE id = 'transcribe' AND prompt_body = ?`,
+      [transcribeDefault, Date.now(), prior]
+    );
+  }
 
   // Remove duplicate Coding Assistant templates (keep only the canonical 'coding_assistant' id).
   await db.execute(
