@@ -265,7 +265,10 @@ fn paste_at_cursor_impl(app: tauri::AppHandle) -> Result<(), String> {
             // spawn_blocking. Key::Other passes the keycode straight through, so
             // it never touches TIS. Keycode 9 is the physical V key on every
             // layout (Arabic included), matching the Ctrl+V accelerator.
+            #[cfg(target_os = "macos")]
             let _ = enigo.key(Key::Other(9), Direction::Click);
+            #[cfg(all(unix, not(target_os = "macos")))]
+            let _ = enigo.key(Key::Unicode('v'), Direction::Click);
             sleep(Duration::from_millis(30));
             let _ = enigo.key(Key::Control, Direction::Release);
         }
