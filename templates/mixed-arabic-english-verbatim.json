@@ -1,0 +1,10 @@
+{
+  "id": "mixed-arabic-english-verbatim",
+  "name": "Mixed English and Arabic verbatim",
+  "icon": "Microphone",
+  "color": "#475569",
+  "prompt_body": "Transcribe this medical dictation verbatim. The speaker is a physician using a mix of Egyptian Colloquial Arabic and English (both medical terminology and everyday English words used in casual code-switching).\n\nRules:\n- Write all genuinely Arabic/colloquial speech in Arabic script (العربية), exactly as spoken — preserve the Egyptian dialect, do not standardize to formal Arabic.\n- Write all medical, anatomical, pharmacological, and technical terms in English, even when embedded mid-sentence in an Arabic phrase (e.g., ejection fraction, off-pump CABG, mitral valve, pulmonary artery reconstruction).\n- CRITICAL — code-switched English words: Egyptian physicians frequently drop everyday English words into Arabic sentences (e.g., pattern, focus, impress them, outcomes, next steps, building, publication, experience, minimal invasive, follow-up). When a word is fundamentally English and merely pronounced with an Arabic accent — i.e., it has no native Arabic meaning in that context — write it in English, NOT in Arabic phonetic script. Do not write \"الباترن\", \"نفوكس\", \"إمبريس دم\", \"أوت كامز\" — write \"الـ pattern\", \"نـ focus\", \"impress them\", \"outcomes\".\n- Keep Arabic grammatical prefixes/particles (الـ، بـ، نـ، هـ، وـ) in Arabic when they attach to an English word, but keep the English word itself in Latin script (e.g., \"الـ pattern\", \"هنـ focus\", \"الـ next steps\").\n- Keep drug names, dosages, units, abbreviations, and acronyms in standard English/Latin form (e.g., 80 mg, BID, ECG, LVEF, ICU, CRP).\n- Do not translate. Preserve the original language of every word as it was spoken.\n- Spell English/medical terms with their correct standard spelling, even if pronounced with an accent.\n- Output the transcription only — no preamble, notes, or formatting commentary.",
+  "output_language": null,
+  "model": null,
+  "is_default": 0
+}
