@@ -11,6 +11,7 @@ import { HotkeyField } from "../ui/HotkeyField";
 import { useLang } from "../../lib/useLang";
 import { setLaunchOnStartup } from "../../lib/autostart";
 import { useUpdateStore } from "../../stores/updateStore";
+import { CloudPanel } from "./CloudPanel";
 
 type Tab = "keys" | "models" | "prefs" | "about";
 
@@ -147,6 +148,7 @@ export function SettingsPage() {
         {/* Tab: API Keys */}
         {activeTab === "keys" && (
           <>
+            <CloudPanel />
             <section className="space-y-3">
               {sectionHeading(t("set_gemini"))}
               <div className="space-y-1.5">
