@@ -5,6 +5,9 @@ import { recorder } from "../../lib/sharedRecorder";
 import { abortSignal, clearAbortSignal } from "../../lib/recordingAbort";
 import { doCancel } from "../../lib/cancelHotkey";
 import { streamAudio, KNOWN_MODELS, AUTO_MODEL_ID } from "../../lib/gemini";
+import { CLOUD_OUT_OF_MINUTES, CLOUD_RATE_LIMITED } from "../../lib/cloud";
+import { refreshCloudAccount } from "../../lib/cloudAuth";
+import { CLOUD_ENABLED } from "../../lib/cloudConfig";
 import { useRecordingStore } from "../../stores/recordingStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useTemplatesStore } from "../../stores/templatesStore";
@@ -61,7 +64,8 @@ export function Recorder() {
     rs.setActiveModel(modelEntry?.label ?? (modelId === AUTO_MODEL_ID ? t("quota_auto") : modelId));
     addLog("info", t("log_msg_sending"), `template="${getTemplateName(template, lang)}" model=${modelEntry?.label ?? modelId}`);
 
-    if (!settings.apiKey && !settings.openRouterApiKey) {
+    // Cloud mode needs no local API key — the gateway holds the paid key.
+    if (settings.accountMode !== "cloud" && !settings.apiKey && !settings.openRouterApiKey) {
       rs.setError(t("rec_no_key"));
       rs.setState("error");
       return;
@@ -107,7 +111,7 @@ export function Recorder() {
           // actually consumed — record it so history stores the real model.
           activeModelIdRef.current = usedModelId;
           rs.setActiveModel(KNOWN_MODELS.find((m) => m.id === usedModelId)?.label ?? usedModelId);
-        });
+        }, durationMs);
         for await (const chunk of iterator) {
           if (abortSignal.current) break;
           rs.appendOutput(chunk);
@@ -117,6 +121,8 @@ export function Recorder() {
         const totalDurationMs = durationMs + (Date.now() - processingStart);
         rs.setTotalDurationMs(totalDurationMs);
         rs.setState("done");
+        // Cloud usage was just metered server-side — pull the fresh balance.
+        if (settings.accountMode === "cloud") void refreshCloudAccount();
         playBeep("done");
         addLog("success", t("log_msg_ready"), t("log_msg_char_count", String(fullText.length)));
 
@@ -153,7 +159,19 @@ export function Recorder() {
         return; // success — exit the retry loop
       } catch (err) {
         if (abortSignal.current) return;
-        lastError = err instanceof Error ? err.message : String(err);
+        const rawMsg = err instanceof Error ? err.message : String(err);
+        // Cloud quota / rate-limit errors are terminal — retrying won't help, so
+        // surface a friendly message immediately and stop the retry loop.
+        if (rawMsg === CLOUD_OUT_OF_MINUTES || rawMsg === CLOUD_RATE_LIMITED) {
+          const friendly = rawMsg === CLOUD_OUT_OF_MINUTES ? t("cloud_out_of_minutes") : t("cloud_rate_limited");
+          addLog("error", friendly, rawMsg);
+          rs.setError(friendly);
+          rs.setState("error");
+          if (rawMsg === CLOUD_OUT_OF_MINUTES) void refreshCloudAccount();
+          await settleOverlay();
+          return;
+        }
+        lastError = rawMsg;
         addLog("warn", t("log_msg_retry_failed", String(attempt)), lastError);
       }
     }
@@ -282,7 +300,9 @@ export function Recorder() {
           {activeHotkey && <span className="kbd" dir="ltr">{activeHotkey}</span>}
         </div>
         <div className="flex items-center gap-2">
-          <QuotaIndicator modelId={activeModelId} />
+          {CLOUD_ENABLED && settings.accountMode === "cloud"
+            ? <CloudBalanceBadge />
+            : <QuotaIndicator modelId={activeModelId} />}
           {rs.state === "processing" && (
             <button onClick={handleCancel} className="btn-danger">
               <Square size={14} fill="currentColor" /> {t("rec_cancel")}
@@ -413,6 +433,24 @@ export function Recorder() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Compact "used / limit min" balance chip for Warid Cloud mode. */
+function CloudBalanceBadge() {
+  const { settings } = useSettingsStore();
+  const { t } = useLang();
+  const used = settings.cloudMinutesUsed;
+  const limit = settings.cloudMinutesLimit;
+  const low = limit > 0 && used / limit >= 0.9;
+  return (
+    <span
+      className="chip font-mono"
+      style={{ color: low ? "var(--danger)" : "var(--accent)", fontSize: 11 }}
+      title={t("cloud_balance_label")}
+    >
+      ☁ {t("cloud_minutes_left", used.toFixed(1), String(limit))}
+    </span>
   );
 }
 

@@ -19,7 +19,8 @@
         "minWidth": 800,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "dragDropEnabled": false
       },
       {
         "title": "Warid Control",
@@ -38,7 +39,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai https://api.groq.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.github.com https://github.com https://*.githubusercontent.com https://objects.githubusercontent.com; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      "csp": "default-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai https://api.groq.com https://*.supabase.co https://*.workers.dev https://fonts.googleapis.com https://fonts.gstatic.com https://api.github.com https://github.com https://*.githubusercontent.com https://objects.githubusercontent.com; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:"
     }
   },
   "bundle": {

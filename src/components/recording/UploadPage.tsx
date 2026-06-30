@@ -290,7 +290,8 @@ export function UploadPage() {
             (level, msg, detail) => {
               addLog(level, `[Queue] ${item.name} (${s + 1}/${segments.length}): ${msg}`, detail);
             },
-            (used) => { usedModelId = used; }
+            (used) => { usedModelId = used; },
+            Math.round((seg.end - seg.start) * 1000),
           );
 
           for await (const chunk of generator) {

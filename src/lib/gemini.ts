@@ -3,6 +3,9 @@ import type { LogLevel } from "../stores/logStore";
 import type { Settings, Template } from "../types";
 import { buildPrompt } from "./prompts";
 import { t } from "./i18n";
+import { CLOUD_ENABLED, CLOUD_GATEWAY_URL } from "./cloudConfig";
+import { streamCloud } from "./cloud";
+import { getAccessToken } from "./cloudAuth";
 
 export type OnLog = (level: LogLevel, msg: string, detail?: string) => void;
 
@@ -245,6 +248,9 @@ export const KNOWN_MODELS: { id: string; provider: "gemini" | "openrouter"; labe
 /** Sentinel id for the "Auto" selection — rotate through free Google models. */
 export const AUTO_MODEL_ID = "auto";
 
+/** Sentinel model id recorded in history when a request went through Warid Cloud. */
+export const CLOUD_MODEL_ID = "warid-cloud";
+
 /**
  * Ordered priority list of free Google models used by Auto mode. The first
  * entry is tried first; on failure (or when its daily quota is spent) Auto
@@ -359,7 +365,17 @@ async function* streamWithProvider(
   audioBase64: string,
   mimeType: string,
   onLog?: OnLog,
+  durationMs = 0,
 ): AsyncGenerator<string> {
+  // Warid Cloud takes over entirely when enabled: the gateway chooses the model
+  // and provider server-side, so the client's KNOWN_MODELS routing is bypassed.
+  if (CLOUD_ENABLED && settings.accountMode === "cloud") {
+    const token = (await getAccessToken()) ?? settings.cloudSessionToken;
+    if (!token) throw new Error(t(settings.uiLanguage, "err_cloud_signed_out"));
+    yield* streamCloud(token, CLOUD_GATEWAY_URL, template, audioBase64, mimeType, durationMs, onLog);
+    return;
+  }
+
   const entry = KNOWN_MODELS.find((m) => m.id === modelId);
   const provider = entry?.provider ?? "gemini";
 
@@ -380,7 +396,21 @@ export async function* streamAudio(
   onLog?: OnLog,
   /** Reports the model id actually used once a request is genuinely consumed. */
   onModelUsed?: (modelId: string) => void,
+  /** Recorded audio length (ms) — forwarded to the cloud gateway for metering. */
+  durationMs = 0,
 ): AsyncGenerator<string> {
+  // Warid Cloud path: the gateway owns model selection, failover and metering, so
+  // we bypass the local Auto rotation, watchdog and per-model request tracker. The
+  // outer retry loop in the caller still provides resilience.
+  if (CLOUD_ENABLED && settings.accountMode === "cloud") {
+    let consumed = false;
+    for await (const chunk of streamWithProvider(settings, CLOUD_MODEL_ID, template, audioBase64, mimeType, onLog, durationMs)) {
+      if (!consumed) { consumed = true; onModelUsed?.(CLOUD_MODEL_ID); }
+      yield chunk;
+    }
+    return;
+  }
+
   const configured = template.model || settings.selectedModel;
   const isAuto = configured === AUTO_MODEL_ID;
   const candidates = isAuto ? getAutoCandidates() : [configured];
@@ -403,7 +433,7 @@ export async function* streamAudio(
     // retries don't double-count.
     let consumed = false;
     try {
-      const base = streamWithProvider(settings, modelId, template, audioBase64, mimeType, onLog);
+      const base = streamWithProvider(settings, modelId, template, audioBase64, mimeType, onLog, durationMs);
       // Only Auto's seamless multi-model fallback gets watchdog timeouts — an
       // explicitly chosen single model is left to run without a deadline.
       const stream = isAuto ? withTimeout(base, firstTokenMs, STALL_TIMEOUT_MS) : base;

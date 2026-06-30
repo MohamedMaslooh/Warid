@@ -26,6 +26,8 @@ import { syncCancelHotkey } from "./lib/cancelHotkey";
 import { reconcileLaunchOnStartup } from "./lib/autostart";
 import { formatAccelerator } from "./lib/hotkey";
 import { useLang } from "./lib/useLang";
+import { CLOUD_ENABLED } from "./lib/cloudConfig";
+import { restoreCloudSession, refreshCloudAccount } from "./lib/cloudAuth";
 
 export default function App() {
   const isOverlay = new URLSearchParams(window.location.search).has("overlay");
@@ -72,6 +74,15 @@ export default function App() {
       await loadTemplates(settings.defaultTemplateId);
     })();
   }, [loaded, settings.defaultTemplateId, loadTemplates, isOverlay]);
+
+  // Restore the Warid Cloud session + refresh balance on startup (cloud builds only).
+  useEffect(() => {
+    if (!loaded || isOverlay || !CLOUD_ENABLED || settings.accountMode !== "cloud") return;
+    (async () => {
+      await restoreCloudSession(settings.cloudSessionToken, settings.cloudRefreshToken);
+      await refreshCloudAccount();
+    })();
+  }, [loaded, isOverlay]);
 
   useEffect(() => {
     if (!loaded || !templates.length || !activeTemplateId || settings.defaultTemplateId === activeTemplateId) return;
