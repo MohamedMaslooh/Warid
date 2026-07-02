@@ -119,4 +119,4 @@ To contribute a community template, add a JSON file under `templates/` and open 
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+AGPLv3. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.

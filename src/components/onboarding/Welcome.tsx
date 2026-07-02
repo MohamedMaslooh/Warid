@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
@@ -19,6 +21,7 @@ import { formatAccelerator } from "../../lib/hotkey";
 import { Select } from "../ui/Select";
 import type { Lang } from "../../lib/i18n";
 import type { Settings } from "../../types";
+import { CLOUD_ENABLED } from "../../lib/cloudConfig";
 
 interface Props {
   /** When true, skip the preferences step (used when the user already finished firstRun
@@ -712,6 +715,19 @@ function ApiKeyStep({
           <span>{t("ob_key_hint")}</span>
         </div>
       </div>
+
+      {/* Warid Cloud — no key needed (cloud builds only). Finish onboarding, then
+          sign in from Settings → Keys. */}
+      {CLOUD_ENABLED && (
+        <button
+          type="button"
+          onClick={onSkip}
+          className="w-full flex items-center justify-center gap-2 text-sm font-semibold transition-all hover:scale-[1.01]"
+          style={{ padding: "10px 16px", border: "1px solid var(--accent-border)", background: "var(--accent-soft)", color: "var(--accent)", borderRadius: 12 }}
+        >
+          ☁ {t("cloud_signin")} — {t("cloud_tagline")}
+        </button>
+      )}
 
       {/* Footer actions */}
       <div className="flex items-center justify-between gap-3 pt-1">

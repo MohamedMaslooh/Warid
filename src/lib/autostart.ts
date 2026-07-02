@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 
 export async function setLaunchOnStartup(enabled: boolean): Promise<void> {

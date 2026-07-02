@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { create } from "zustand";
 import { loadSettings, saveSettings } from "../lib/store";
 import { DEFAULT_SETTINGS, type Settings } from "../types";

@@ -1,5 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import jsPDF from "jspdf";
 import { invoke } from "@tauri-apps/api/core";
+import bidiFactory from "bidi-js";
+import { reshapeArabic } from "./arabicShaper";
+import { registerArabicFont, AMIRI_FONT } from "./pdfFonts";
+
+const bidi = bidiFactory();
 
 type LineStyle = "h1" | "h2" | "h3" | "body" | "gap";
 
@@ -63,15 +70,38 @@ function parseMarkdownLines(text: string): Array<{ text: string; style: LineStyl
 }
 
 export async function exportToPDF(fileName: string, text: string): Promise<void> {
-  const isArabic = /[\u0600-\u06FF]/.test(text.slice(0, 300));
+  // Does the document contain Arabic anywhere? jsPDF's built-in fonts can't
+  // render Arabic and do no letter-joining or bidi, so any Arabic forces the
+  // embedded Amiri font plus the shaping + reordering pipeline below.
+  const hasArabic = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+  // Base paragraph direction follows the dominant script; Arabic runs inside an
+  // LTR document (and vice-versa) are still placed correctly by the bidi pass.
+  const arabicCount = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  const latinCount = (text.match(/[A-Za-z]/g) || []).length;
+  const baseRTL = hasArabic && arabicCount >= latinCount;
+  const baseDir = baseRTL ? "rtl" : "ltr";
 
   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+
+  if (hasArabic) await registerArabicFont(doc);
+  const fontFamily = hasArabic ? AMIRI_FONT : "helvetica";
 
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const marginX = 20;
   const marginY = 20;
   const contentWidth = pageW - marginX * 2;
+
+  // Shape Arabic to presentation forms (logical order) then reorder each
+  // wrapped line to its final visual order. Pure-Latin documents skip this.
+  const toVisualLines = (logical: string): string[] => {
+    const shaped = hasArabic ? reshapeArabic(logical) : logical;
+    const wrapped = doc.splitTextToSize(shaped, contentWidth) as string[];
+    if (!hasArabic) return wrapped;
+    return wrapped.map((ln) =>
+      bidi.getReorderedString(ln, bidi.getEmbeddingLevels(ln, baseDir))
+    );
+  };
 
   const PT_TO_MM = 25.4 / 72;
   const LINE_HEIGHT = 1.25; // line-spacing factor, shared by jsPDF and our math
@@ -105,9 +135,9 @@ export async function exportToPDF(fileName: string, text: string): Promise<void>
     else if (line.style === "h3") { fontSize = 12.5; isBold = true; spaceBefore = 3; }
 
     doc.setFontSize(fontSize);
-    doc.setFont("helvetica", isBold ? "bold" : "normal");
+    doc.setFont(fontFamily, isBold ? "bold" : "normal");
 
-    const wrapped = doc.splitTextToSize(line.text, contentWidth);
+    const wrapped = toVisualLines(line.text);
     const lineHeightMm = fontSize * PT_TO_MM * LINE_HEIGHT;
     const blockHeight = wrapped.length * lineHeightMm;
 
@@ -117,8 +147,8 @@ export async function exportToPDF(fileName: string, text: string): Promise<void>
     // y tracks the top of the block; jsPDF anchors text at the baseline, so
     // offset the first line down by roughly one font height.
     const baselineOffset = fontSize * PT_TO_MM;
-    const xPos = isArabic ? pageW - marginX : marginX;
-    const align = isArabic ? "right" : "left";
+    const xPos = baseRTL ? pageW - marginX : marginX;
+    const align = baseRTL ? "right" : "left";
 
     doc.text(wrapped, xPos, y + baselineOffset, { align } as Parameters<typeof doc.text>[3]);
     y += blockHeight;

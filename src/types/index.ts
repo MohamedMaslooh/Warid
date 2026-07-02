@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 export interface Template {
   id: string;
   name: string;
@@ -65,6 +67,23 @@ export interface Settings {
   seenWhatsNew112: boolean;
   /** When true, updates download silently in the background and only prompt to restart. */
   autoDownloadUpdates: boolean;
+
+  /* ── Warid Cloud (paid tier; only active when VITE_CLOUD_ENABLED) ────────── */
+  /** Which engine drives transcription: own key ("byok", default) or hosted ("cloud"). */
+  accountMode: "byok" | "cloud";
+  /** Email of the signed-in Warid Cloud account (display only). */
+  cloudEmail: string;
+  /** Supabase session (access token) for the cloud account. Stored like apiKey
+   *  in settings.json today — see plan's "known limitations" (keychain deferred). */
+  cloudSessionToken: string;
+  /** Supabase refresh token, used to silently renew the session. */
+  cloudRefreshToken: string;
+  /** Current plan, mirrored from the gateway's /v1/me for offline display. */
+  cloudPlan: "free" | "plus" | "pro";
+  /** Audio-minutes used this cycle, mirrored from /v1/me. */
+  cloudMinutesUsed: number;
+  /** Audio-minute cap for the current plan, mirrored from /v1/me. */
+  cloudMinutesLimit: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -90,6 +109,13 @@ export const DEFAULT_SETTINGS: Settings = {
   seenWhatsNew111: false,
   seenWhatsNew112: false,
   autoDownloadUpdates: false,
+  accountMode: "byok",
+  cloudEmail: "",
+  cloudSessionToken: "",
+  cloudRefreshToken: "",
+  cloudPlan: "free",
+  cloudMinutesUsed: 0,
+  cloudMinutesLimit: 0,
 };
 
 export const DEFAULT_TEMPLATES: Omit<Template, "created_at" | "updated_at">[] = [

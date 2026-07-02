@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 const STRINGS = {
   en: {
     'brand': 'Warid',
@@ -56,7 +58,7 @@ const STRINGS = {
     'faq.label': 'Questions',
     'faq.title': 'Frequently asked.',
     'faq.q1': 'Is Warid really free?',
-    'faq.a1': 'Yes. The app is open-source under the MIT license and costs nothing. You\'ll need a free Google Gemini API key, which Google provides on a generous free tier that\'s more than enough for most personal use.',
+    'faq.a1': 'Yes. The app is open-source under the AGPLv3 license and costs nothing. You\'ll need a free Google Gemini API key, which Google provides on a generous free tier that\'s more than enough for most personal use.',
     'faq.q2': 'Where does my audio go?',
     'faq.a2': 'Straight from your machine to Google\'s Gemini API using your own key. Warid has no server. We don\'t see, log, or store anything. There\'s no analytics or telemetry of any kind.',
     'faq.q3': 'Which languages does it support?',
@@ -80,7 +82,7 @@ const STRINGS = {
     'dl.linux.title': 'Linux',
     'dl.linux.cta': '<i data-lucide="download" stroke-width="1.75"></i> Download',
     'dl.linux.req': 'Ubuntu 22.04 · Debian · Fedora · amd64',
-    'footer.copy': '© 2026 Warid · Open source under MIT',
+    'footer.copy': '© 2026 Warid · Open source under AGPLv3',
     'footer.gh': 'GitHub',
     'footer.releases': 'Releases',
     'footer.issues': 'Issues',
@@ -196,7 +198,7 @@ const STRINGS = {
     'faq.label': 'الأسئلة',
     'faq.title': 'الأسئلة المتكررة.',
     'faq.q1': 'هل وارِد مجاني حقاً؟',
-    'faq.a1': 'نعم. التطبيق مفتوح المصدر بموجب رخصة MIT ولا يكلف شيئاً. ستحتاج إلى مفتاح Google Gemini API مجاني، الذي تقدمه Google بطبقة مجانية سخية تكفي معظم الاستخدام الشخصي.',
+    'faq.a1': 'نعم. التطبيق مفتوح المصدر بموجب رخصة AGPLv3 ولا يكلف شيئاً. ستحتاج إلى مفتاح Google Gemini API مجاني، الذي تقدمه Google بطبقة مجانية سخية تكفي معظم الاستخدام الشخصي.',
     'faq.q2': 'أين يذهب صوتي؟',
     'faq.a2': 'مباشرة من جهازك إلى Gemini API من Google باستخدام مفتاحك الخاص. وارِد لا يملك خادماً. نحن لا نرى أو نسجل أو نخزن أي شيء. لا توجد أي تحليلات أو تتبع.',
     'faq.q3': 'ما اللغات التي يدعمها؟',
@@ -220,7 +222,7 @@ const STRINGS = {
     'dl.linux.title': 'لينكس',
     'dl.linux.cta': '<i data-lucide="download" stroke-width="1.75"></i> تحميل',
     'dl.linux.req': 'Ubuntu 22.04 · Debian · Fedora · amd64',
-    'footer.copy': '© 2026 وارِد · مفتوح المصدر بموجب MIT',
+    'footer.copy': '© 2026 وارِد · مفتوح المصدر بموجب AGPLv3',
     'footer.gh': 'GitHub',
     'footer.releases': 'الإصدارات',
     'footer.issues': 'المشكلات',

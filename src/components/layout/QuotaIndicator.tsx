@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useRequestTrackerStore } from "../../stores/requestTrackerStore";
 import { KNOWN_MODELS, AUTO_MODEL_ID, getAutoCandidates } from "../../lib/gemini";

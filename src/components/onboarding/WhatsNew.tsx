@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Mic, Pin, EyeOff, X, Sparkles, DownloadCloud } from "lucide-react";
 import { useLang } from "../../lib/useLang";
 

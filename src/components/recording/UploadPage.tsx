@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useRef, useEffect, useState } from "react";
 import { 
   Upload, 
@@ -290,7 +292,8 @@ export function UploadPage() {
             (level, msg, detail) => {
               addLog(level, `[Queue] ${item.name} (${s + 1}/${segments.length}): ${msg}`, detail);
             },
-            (used) => { usedModelId = used; }
+            (used) => { usedModelId = used; },
+            Math.round((seg.end - seg.start) * 1000),
           );
 
           for await (const chunk of generator) {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { X, Trophy, Check } from "lucide-react";
 import { useState } from "react";
 import { useLang } from "../../lib/useLang";
