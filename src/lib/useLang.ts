@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useSettingsStore } from "../stores/settingsStore";
 import { t as translate, type Lang, type LangKey } from "./i18n";
 import type { Template } from "../types";

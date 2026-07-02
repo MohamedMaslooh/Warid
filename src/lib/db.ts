@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import Database from "@tauri-apps/plugin-sql";
 import { DEFAULT_TEMPLATES, type HistoryItem, type Template } from "../types";
 import type { MilestoneReport } from "./analyticsAI";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { create } from "zustand";
 import { getTemplates, upsertTemplate, deleteTemplate } from "../lib/db";
 import { syncCommandHotkeys } from "../lib/commandHotkeys";

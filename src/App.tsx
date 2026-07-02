@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { BrowserRouter, Routes, Route } from "react-router-dom";

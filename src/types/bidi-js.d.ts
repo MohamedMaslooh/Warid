@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 declare module "bidi-js" {
   export interface EmbeddingLevelsResult {
     levels: Uint8Array;

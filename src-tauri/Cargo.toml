@@ -3,6 +3,7 @@ name = "warid"
 version = "0.1.0"
 description = "Warid - Audio Transcription & Translation powered by Gemini"
 authors = ["Maslooh"]
+license = "AGPL-3.0-or-later"
 edition = "2021"
 
 [lib]

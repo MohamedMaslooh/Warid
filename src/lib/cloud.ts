@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Warid Cloud client — talks to the private gateway (Cloudflare Worker) instead of
  * a provider directly. The gateway holds the paid Gemini key, enforces the plan's

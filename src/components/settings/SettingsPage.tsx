@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState, useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { Eye, EyeOff, Save } from "lucide-react";

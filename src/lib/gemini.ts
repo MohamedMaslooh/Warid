@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { LogLevel } from "../stores/logStore";
 import type { Settings, Template } from "../types";

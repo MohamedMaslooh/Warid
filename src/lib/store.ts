@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Store } from "@tauri-apps/plugin-store";
 import { DEFAULT_SETTINGS, type Settings } from "../types";
 

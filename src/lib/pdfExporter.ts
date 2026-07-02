@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import jsPDF from "jspdf";
 import { invoke } from "@tauri-apps/api/core";
 import bidiFactory from "bidi-js";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Persistent bridge for commands dispatched from the floating overlay control
  * bar (start / stop / pause / resume / cancel).

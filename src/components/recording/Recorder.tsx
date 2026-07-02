@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useRef, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Mic, Square, RefreshCw, Copy, Terminal, Clock, Zap, Share2 } from "lucide-react";
 import { formatDuration, playBeep } from "../../lib/audio";

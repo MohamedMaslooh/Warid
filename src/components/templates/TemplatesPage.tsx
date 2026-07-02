@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Save, X, Star } from "lucide-react";
 import { HotkeyField } from "../ui/HotkeyField";

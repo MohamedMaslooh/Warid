@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 const STOP_WORDS_EN = new Set([
   "the", "a", "an", "and", "or", "but", "is", "are", "was", "were", "be", "been", "being",
   "have", "has", "had", "do", "does", "did", "of", "in", "on", "at", "to", "for", "with",

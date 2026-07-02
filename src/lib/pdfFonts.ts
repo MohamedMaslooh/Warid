@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type jsPDF from "jspdf";
 import amiriRegularUrl from "../assets/fonts/Amiri-Regular.ttf?url";
 import amiriBoldUrl from "../assets/fonts/Amiri-Bold.ttf?url";

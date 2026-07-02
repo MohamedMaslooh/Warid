@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useEffect, useState } from "react";
 import { Cloud, Mail, KeyRound, LogOut, RefreshCw, ArrowUpCircle, Check } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";

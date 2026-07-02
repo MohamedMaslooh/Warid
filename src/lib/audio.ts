@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 export interface RecordingResult {
   base64: string;
   mimeType: string;

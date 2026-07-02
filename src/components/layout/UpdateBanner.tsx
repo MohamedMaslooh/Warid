@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { X, ArrowUpCircle } from "lucide-react";
 import { useLang } from "../../lib/useLang";
 
