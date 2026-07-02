@@ -4,7 +4,7 @@
 
 interface ImportMetaEnv {
   /** "true" to enable the Warid Cloud (paid, hosted) tier in this build.
-   *  Unset/anything-else keeps the app BYOK-only (the public/MIT default). */
+   *  Unset/anything-else keeps the app BYOK-only (the public/AGPLv3 default). */
   readonly VITE_CLOUD_ENABLED?: string;
   /** Base URL of the Warid Cloud gateway, e.g. https://api.warid.app */
   readonly VITE_CLOUD_GATEWAY_URL?: string;

@@ -5,7 +5,7 @@
  *
  * The hosted, paid "Warid Cloud" tier is OFF unless this build was compiled with
  * `VITE_CLOUD_ENABLED=true` (set in a local `.env.local`, never in public CI). When
- * disabled every cloud code path and UI surface no-ops, so the public/MIT release
+ * disabled every cloud code path and UI surface no-ops, so the public/AGPLv3 release
  * behaves exactly as the BYOK app does today and never exposes the paid path.
  *
  * Keep ALL cloud UI and the `cloud` provider branch behind `CLOUD_ENABLED`.
