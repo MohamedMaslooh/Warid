@@ -128,6 +128,17 @@
   to   { opacity: 1; transform: translateY(0)     scale(1); }
 }
 
+/* Release-notes panel in the update banner — a thin, quiet scrollbar so the
+   notes read as a document, not as a nested scroll box. */
+.notes-scroll { scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.notes-scroll::-webkit-scrollbar { width: 5px; }
+.notes-scroll::-webkit-scrollbar-track { background: transparent; }
+.notes-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 999px;
+}
+.notes-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
 /* Indeterminate progress bar (update download with unknown content length). */
 @keyframes indeterminate {
   0%   { transform: translateX(-100%); }
