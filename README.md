@@ -78,7 +78,7 @@ You can add unlimited custom templates from the Templates page. Each template co
 
 - The prompt body (what Gemini does with the audio)
 - Output language
-- Gemini model (default: `gemini-3.1-flash-lite`)
+- Gemini model (default: Auto, which starts at `gemini-3.5-flash-lite` and falls back down the chain)
 
 Import and export templates as JSON to share with others. The `templates/` folder in this repo has community examples.
 

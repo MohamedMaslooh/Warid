@@ -235,16 +235,38 @@ export type ModelQuota =
   | { type: "free_or_paid"; freeRpd: number; paidRpd: number }
   | { type: "paid" };
 
+/**
+ * Every model the app can talk to, with its free-tier rate limits as published
+ * by Google AI Studio (requests per minute and per day). The Google entries are
+ * listed in the default Auto order: the Lite models first — they carry a far
+ * larger daily allowance (500/day vs 20/day) — then the regular Flash models
+ * newest-first. See DEFAULT_AUTO_SEQUENCE.
+ */
 export const KNOWN_MODELS: { id: string; provider: "gemini" | "openrouter"; label: string; quota: ModelQuota }[] = [
-  { id: "gemini-3.1-flash-lite",                               provider: "gemini",     label: "Gemini 3.1 Flash Lite",           quota: { type: "free", rpm: 30, rpd: 500 } },
-  { id: "gemini-3.5-flash",                                    provider: "gemini",     label: "Gemini 3.5 Flash",                 quota: { type: "free", rpm: 10, rpd: 20 } },
+  { id: "gemini-3.5-flash-lite",                               provider: "gemini",     label: "Gemini 3.5 Flash Lite",            quota: { type: "free", rpm: 15, rpd: 500 } },
+  { id: "gemini-3.1-flash-lite",                               provider: "gemini",     label: "Gemini 3.1 Flash Lite",            quota: { type: "free", rpm: 30, rpd: 500 } },
+  { id: "gemini-3.8-flash",                                    provider: "gemini",     label: "Gemini 3.8 Flash",                 quota: { type: "free", rpm: 5,  rpd: 20 } },
+  { id: "gemini-3.7-flash",                                    provider: "gemini",     label: "Gemini 3.7 Flash",                 quota: { type: "free", rpm: 5,  rpd: 20 } },
+  { id: "gemini-3.6-flash",                                    provider: "gemini",     label: "Gemini 3.6 Flash",                 quota: { type: "free", rpm: 5,  rpd: 20 } },
+  { id: "gemini-3.5-flash",                                    provider: "gemini",     label: "Gemini 3.5 Flash",                 quota: { type: "free", rpm: 5,  rpd: 20 } },
   { id: "gemini-3-flash-preview",                              provider: "gemini",     label: "Gemini 3 Flash Preview",           quota: { type: "free", rpm: 10, rpd: 20 } },
   { id: "gemini-2.5-flash",                                    provider: "gemini",     label: "Gemini 2.5 Flash",                 quota: { type: "free", rpm: 10, rpd: 20 } },
   { id: "gemini-2.5-flash-lite",                               provider: "gemini",     label: "Gemini 2.5 Flash Lite",            quota: { type: "free", rpm: 15, rpd: 20 } },
   { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", provider: "openrouter", label: "Nemotron 3 Nano Omni 30B (free)",  quota: { type: "free_or_paid", freeRpd: 20, paidRpd: 1000 } },
+  { id: "google/gemini-3.8-flash",                             provider: "openrouter", label: "Gemini 3.8 Flash (OR)",            quota: { type: "paid" } },
+  { id: "google/gemini-3.7-flash",                             provider: "openrouter", label: "Gemini 3.7 Flash (OR)",            quota: { type: "paid" } },
+  { id: "google/gemini-3.6-flash",                             provider: "openrouter", label: "Gemini 3.6 Flash (OR)",            quota: { type: "paid" } },
   { id: "google/gemini-3.1-flash-lite",                        provider: "openrouter", label: "Gemini 3.1 Flash Lite (OR)",       quota: { type: "paid" } },
   { id: "google/gemini-3-flash-preview",                       provider: "openrouter", label: "Gemini 3 Flash Preview (OR)",      quota: { type: "paid" } },
   { id: "google/gemini-2.5-flash-lite-preview-09-2025",        provider: "openrouter", label: "Gemini 2.5 Flash Lite Preview (OR)", quota: { type: "paid" } },
+];
+
+/** Model used for the (non-transcription) analytics milestone summaries, with
+ *  its fallbacks — cheap, high-quota models that support JSON output. */
+export const ANALYTICS_MODELS: string[] = [
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
 ];
 
 /** Sentinel id for the "Auto" selection — rotate through free Google models. */
@@ -254,17 +276,39 @@ export const AUTO_MODEL_ID = "auto";
 export const CLOUD_MODEL_ID = "warid-cloud";
 
 /**
- * Ordered priority list of free Google models used by Auto mode. The first
- * entry is tried first; on failure (or when its daily quota is spent) Auto
- * falls through to the next.
+ * Default priority list of free Google models used by Auto mode. The first
+ * entry is tried first; on failure (or when its quota is spent) Auto falls
+ * through to the next. Users can reorder or trim this from Settings — see
+ * `Settings.autoSequence` and `resolveAutoSequence`.
  */
-export const AUTO_SEQUENCE: string[] = [
+export const DEFAULT_AUTO_SEQUENCE: string[] = [
+  "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
   "gemini-3.5-flash",
   "gemini-3-flash-preview",
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
 ];
+
+/** Models the user may place in the Auto chain: the free Google ones, since
+ *  Auto exists to stretch the free tier without touching a paid provider. */
+export const AUTO_ELIGIBLE_MODELS: string[] = KNOWN_MODELS
+  .filter((m) => m.provider === "gemini" && m.quota.type === "free")
+  .map((m) => m.id);
+
+/**
+ * The Auto chain actually in force: the user's saved order, sanitised (unknown
+ * or duplicated ids dropped — e.g. a model retired in a later release), falling
+ * back to the built-in order when the user hasn't customised it.
+ */
+export function resolveAutoSequence(custom?: readonly string[] | null): string[] {
+  const eligible = new Set(AUTO_ELIGIBLE_MODELS);
+  const cleaned = (custom ?? []).filter((id, i, arr) => eligible.has(id) && arr.indexOf(id) === i);
+  return cleaned.length > 0 ? cleaned : DEFAULT_AUTO_SEQUENCE;
+}
 
 /** Daily request cap for a model id, or Infinity when it has no free cap. */
 export function modelDailyLimit(modelId: string): number {
@@ -275,29 +319,85 @@ export function modelDailyLimit(modelId: string): number {
   return Infinity;
 }
 
+/** Per-minute request cap for a model id, or Infinity when it has none. */
+export function modelMinuteLimit(modelId: string): number {
+  const m = KNOWN_MODELS.find((x) => x.id === modelId);
+  if (m?.quota.type === "free") return m.quota.rpm;
+  return Infinity;
+}
+
 import { useRequestTrackerStore } from "../stores/requestTrackerStore";
 
 /**
- * Auto-mode candidates in priority order. Healthy models — quota left today and
- * not in a high-demand cooldown — come first, in priority order. Models that are
- * out of quota or temporarily cooling down are appended as a last resort so the
- * user is never hard-blocked (caps and overloads both recover on Google's side).
+ * Auto-mode candidates in priority order, in three tiers so the best usable
+ * model is always tried first and nothing is ever hard-blocked:
+ *   1. ready      — daily quota left, under its per-minute cap, not cooling down
+ *   2. throttled  — momentarily rate-limited or cooling down after an error
+ *   3. exhausted  — daily cap already spent
+ * Tiers 2 and 3 still get tried as a last resort, because every one of those
+ * conditions recovers on Google's side (and our local counters can lag reality).
  */
-export function getAutoCandidates(): string[] {
+export function getAutoCandidates(customSequence?: readonly string[] | null): string[] {
   const tracker = useRequestTrackerStore.getState();
-  const preferred: string[] = [];
-  const deprioritized: string[] = [];
-  for (const id of AUTO_SEQUENCE) {
-    const hasQuota = tracker.getRequestCountToday(id) < modelDailyLimit(id);
-    if (hasQuota && !tracker.isCoolingDown(id)) preferred.push(id);
-    else deprioritized.push(id);
+  const ready: string[] = [];
+  const throttled: string[] = [];
+  const exhausted: string[] = [];
+  for (const id of resolveAutoSequence(customSequence)) {
+    if (tracker.getRequestCountToday(id) >= modelDailyLimit(id)) {
+      exhausted.push(id);
+    } else if (tracker.isCoolingDown(id) || tracker.getRequestCountLastMinute(id) >= modelMinuteLimit(id)) {
+      throttled.push(id);
+    } else {
+      ready.push(id);
+    }
   }
-  return [...preferred, ...deprioritized];
+  return [...ready, ...throttled, ...exhausted];
 }
 
-/** How long to skip a model after it signals high demand / stalls, before
- *  reverting to preferring it again. Temporary, never permanent. */
-const HIGH_DEMAND_COOLDOWN_MS = 3 * 60 * 60 * 1000; // 3 hours
+/** How long to skip a model that is overloaded or stalling, before preferring
+ *  it again. Temporary, never permanent. */
+const OVERLOAD_COOLDOWN_MS = 3 * 60 * 60 * 1000; // 3 hours
+/** Fallback cooldown for a rate-limit (429) that carries no retry hint. Short,
+ *  because a per-minute cap clears within the minute. */
+const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
+/** Nothing is ever benched longer than this, whatever the error claims. */
+const MAX_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
+/** Milliseconds until the local day rolls over — when our per-day counters and
+ *  (approximately) Google's daily quotas reset. */
+function msUntilNextLocalDay(): number {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 30);
+  return next.getTime() - now.getTime();
+}
+
+/**
+ * How long to bench a model after a failure. A per-minute rate limit must not
+ * cost the model the same 3-hour timeout as a genuine overload — with the Flash
+ * models capped at 5 requests/minute that would burn through the whole chain in
+ * a single busy minute. So: honour Google's own `retryDelay` when present, bench
+ * a spent daily quota until the day rolls over, and treat everything else as
+ * overload.
+ */
+function cooldownForError(err: unknown): number {
+  const msg = err instanceof Error ? err.message : String(err);
+  const isRateLimit = /\b429\b/.test(msg)
+    || /too many requests|rate.?limit|resource[_ ]exhausted|quota/i.test(msg);
+  if (!isRateLimit) return OVERLOAD_COOLDOWN_MS;
+
+  // A spent daily allowance only comes back tomorrow; retrying sooner just
+  // wastes an attempt on every recording.
+  if (/per[-_ ]?day|daily|\/day/i.test(msg)) {
+    return Math.min(msUntilNextLocalDay(), MAX_COOLDOWN_MS);
+  }
+  // Google attaches a RetryInfo to 429s, e.g. "retryDelay": "26s".
+  const retry = msg.match(/retry[_-]?delay"?\s*:\s*"?(\d+(?:\.\d+)?)s/i);
+  if (retry) {
+    const ms = Number(retry[1]) * 1000;
+    if (isFinite(ms) && ms > 0) return Math.min(Math.max(ms, 5_000), MAX_COOLDOWN_MS);
+  }
+  return RATE_LIMIT_COOLDOWN_MS;
+}
 /** Max wait for the FIRST streamed token before abandoning a model. Generous
  *  so large uploads / a momentarily slow model aren't cut off prematurely. */
 const FIRST_TOKEN_TIMEOUT_MS = 45_000;
@@ -414,8 +514,14 @@ export async function* streamAudio(
   }
 
   const configured = template.model || settings.selectedModel;
-  const isAuto = configured === AUTO_MODEL_ID;
-  const candidates = isAuto ? getAutoCandidates() : [configured];
+  // A model id we no longer ship (retired between releases, or a stale template)
+  // would 404 on every attempt. Treat it as Auto rather than failing outright.
+  const isKnown = KNOWN_MODELS.some((m) => m.id === configured);
+  if (configured !== AUTO_MODEL_ID && !isKnown) {
+    onLog?.("warn", t(settings.uiLanguage, "log_unknown_model", configured));
+  }
+  const isAuto = configured === AUTO_MODEL_ID || !isKnown;
+  const candidates = isAuto ? getAutoCandidates(settings.autoSequence) : [configured];
   if (candidates.length === 0) throw new Error(t(settings.uiLanguage, "err_auto_exhausted"));
 
   // The first-token watchdog must not punish a big upload (large audio is sent
@@ -453,7 +559,7 @@ export async function* streamAudio(
       // Remember an overloaded/slow model so this retry — and the next
       // recording — skip straight past it during the cooldown window.
       if (isAuto && isHighDemandError(err)) {
-        tracker.markHighDemand(modelId, HIGH_DEMAND_COOLDOWN_MS);
+        tracker.markHighDemand(modelId, cooldownForError(err));
       }
       // If the request was already consumed (tokens streamed, then it broke),
       // don't silently switch models mid-output — surface the error so the

@@ -191,12 +191,12 @@ export const useAnalyticsStore = create<AnalyticsStore>((set, get) => ({
 
     set({ analysing: true });
     try {
-      const report = await runMilestoneAnalysis(apiKey, texts, totalWords, totalSessions);
+      const { report, modelUsed } = await runMilestoneAnalysis(apiKey, texts, totalWords, totalSessions);
       await saveAnalyticsMilestone(
         `milestone-${milestone}`,
         milestone,
         report,
-        "gemini-3.1-flash-lite",
+        modelUsed,
       );
       // Reload milestones after save
       const updated = await getAnalyticsMilestones();

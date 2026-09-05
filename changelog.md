@@ -6,6 +6,38 @@ This changelog records every meaningful change to the application — features, 
 
 ---
 
+## [v1.1.6] — 2026-09-05
+
+### Added
+
+#### Google's new Gemini models
+- Added the newly released **Gemini 3.5 Flash Lite** (15 req/min · 500 req/day) and **Gemini 3.8 / 3.7 / 3.6 Flash** (5 req/min · 20 req/day each) to the model list, with the free-tier limits Google actually publishes for them. The three new Flash models are available through OpenRouter too (`google/gemini-3.8-flash`, `google/gemini-3.7-flash`, `google/gemini-3.6-flash`).
+- **Gemini 3.5 Flash Lite is the new head of the Auto chain**, followed by Gemini 3.1 Flash Lite — the two Lite models carry 500 requests/day each, so ordinary use now almost never reaches a 20/day model. Behind them come the regular Flash models newest-first (3.8 → 3.7 → 3.6 → 3.5), then Gemini 3 Flash Preview, Gemini 2.5 Flash and Gemini 2.5 Flash Lite. (`src/lib/gemini.ts`)
+
+#### The Auto order is now yours to arrange
+- Settings → Models has a new **Auto model order** panel: move any model up or down the fallback chain, drop one out of it, add it back, or reset to the app's default order. Choosing one specific model for everything (or for a single command) works exactly as before. (`src/components/settings/SettingsPage.tsx`, `src/types/index.ts`)
+- The saved order is stored as a plain list of model ids and sanitised on load, so an order saved today keeps working after a future release retires or renames a model — and an untouched order automatically picks up whatever models ship next.
+
+### Fixed
+
+#### A per-minute rate limit benched a model for three hours
+- **Problem:** Every "high demand" response — an overloaded server *and* an ordinary rate limit alike — put the model in a flat 3-hour cooldown. The new Flash models allow only 5 requests per minute, so a short burst of dictation could bench four models for the rest of the afternoon over a limit that clears in seconds.
+- **Solution:** The cooldown is now chosen from the error itself: Google's own `retryDelay` when it sends one (usually well under a minute), one minute for a rate limit with no hint, until the day rolls over for a spent daily quota, and the original 3 hours only for a genuine overload or a stalled stream. (`src/lib/gemini.ts`)
+
+#### Auto now steps around a model *before* it rate-limits
+- Requests are counted in a rolling 60-second window per model, and Auto passes over any model already at its per-minute cap instead of spending a request to discover it. Models that are merely throttled stay ahead of models that are out of quota for the day, and nothing is ever hard-excluded — every tier is still tried as a last resort. (`src/lib/gemini.ts`, `src/stores/requestTrackerStore.ts`)
+
+#### A model the app no longer ships failed instead of falling back
+- A command (or a saved setting) pointing at a model id that is no longer in the app — retired between releases — used to fail the request outright. It now logs the reason and runs through the Auto chain instead. (`src/lib/gemini.ts`)
+
+### Changed
+
+- **Model cards show both limits.** Each free model now displays its per-minute allowance next to its daily one, so the difference between a 500/day Lite model and a 20/day Flash model is visible at a glance. (`src/components/settings/SettingsPage.tsx`)
+- **Gemini 3.5 Flash's per-minute limit corrected** from 10 to 5, matching Google's published free-tier figure.
+- **Milestone summaries in Analytics** now run on Gemini 3.5 Flash Lite, and fall back through Gemini 3.1 Flash Lite and Gemini 2.5 Flash Lite instead of giving up when one model is out of quota. The model that produced each summary is recorded with it. (`src/lib/analyticsAI.ts`, `src/stores/analyticsStore.ts`)
+
+---
+
 ## [v1.1.5] — 2026-06-21
 
 ### Added

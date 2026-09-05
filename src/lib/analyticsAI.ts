@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ANALYTICS_MODELS } from "./gemini";
 
 export interface MilestoneReport {
   topWords: Array<{ word: string; count: number }>;
@@ -52,38 +53,54 @@ export async function runMilestoneAnalysis(
   allTexts: string[],
   wordCount: number,
   totalSessions: number,
-): Promise<MilestoneReport> {
+): Promise<{ report: MilestoneReport; modelUsed: string }> {
   // Use up to the last ~3000 words to keep the prompt lean
   const joined = allTexts.join(" ");
   const words = joined.split(/\s+/);
   const corpus = words.slice(-3000).join(" ");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.1-flash-lite",
-    generationConfig: {
-      // @ts-expect-error — thinkingConfig not yet typed
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: "application/json",
-    },
-  });
 
-  const result = await model.generateContent(ANALYSIS_PROMPT(wordCount, corpus));
-  const raw = result.response.text().trim();
+  // Try the analytics models in order — a milestone summary is a one-shot
+  // background job, so a model that's out of quota should never cost the user
+  // their report when the next one in line can produce it.
+  let lastError: unknown = null;
+  for (const modelId of ANALYTICS_MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelId,
+        generationConfig: {
+          // @ts-expect-error — thinkingConfig not yet typed
+          thinkingConfig: { thinkingBudget: 0 },
+          responseMimeType: "application/json",
+        },
+      });
 
-  let parsed: Omit<MilestoneReport, "avgWordsPerSession" | "totalSessions">;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    // Fallback if model wraps in backticks despite instruction
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Failed to parse milestone analysis JSON");
-    parsed = JSON.parse(match[0]);
+      const result = await model.generateContent(ANALYSIS_PROMPT(wordCount, corpus));
+      const raw = result.response.text().trim();
+
+      let parsed: Omit<MilestoneReport, "avgWordsPerSession" | "totalSessions">;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        // Fallback if model wraps in backticks despite instruction
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("Failed to parse milestone analysis JSON");
+        parsed = JSON.parse(match[0]);
+      }
+
+      return {
+        report: {
+          ...parsed,
+          avgWordsPerSession: totalSessions > 0 ? Math.round(wordCount / totalSessions) : 0,
+          totalSessions,
+        },
+        modelUsed: modelId,
+      };
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  return {
-    ...parsed,
-    avgWordsPerSession: totalSessions > 0 ? Math.round(wordCount / totalSessions) : 0,
-    totalSessions,
-  };
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }

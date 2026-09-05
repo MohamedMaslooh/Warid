@@ -35,6 +35,7 @@ export const translations = {
     err_no_or_key:    "OpenRouter API Key مفقود، أضفه من الإعدادات",
     err_auto_exhausted: "نفدت الحصة اليومية لجميع نماذج Google المجانية",
     log_auto_switch:   "تعذّر النموذج {0} — التبديل إلى {1}",
+    log_unknown_model: "النموذج {0} لم يعد متاحاً — استخدام الوضع التلقائي بدلاً منه",
 
     // Activity log (inline)
     log_section: "Activity Log",
@@ -90,6 +91,14 @@ export const translations = {
     set_auto_desc:     "يستخدم نماذج Google المجانية بالتسلسل، وينتقل تلقائياً إلى النموذج التالي عند حدوث خطأ أو نفاد الحصة اليومية.",
     set_used_today:    "{0}/{1} مستخدم اليوم",
     quota_auto:        "تلقائي",
+    set_auto_order:      "ترتيب النماذج في الوضع التلقائي",
+    set_auto_order_hint: "تُجرَّب النماذج من الأعلى إلى الأسفل. يتخطّى وارِد أي نموذج نفدت حصته أو تجاوز حدّ الطلبات في الدقيقة، ثم يعود إليه تلقائياً عند توفّره.",
+    set_auto_reset:      "استعادة الترتيب الافتراضي",
+    set_auto_excluded:   "غير مُدرَجة في التسلسل",
+    set_auto_add:        "إضافة {0} إلى التسلسل",
+    set_auto_remove:     "إزالة من التسلسل",
+    set_auto_up:         "تحريك للأعلى",
+    set_auto_down:       "تحريك للأسفل",
     set_behavior:      "السلوك",
     set_autocopy:      "نسخ النتيجة تلقائياً للحافظة",
     set_save_hist:     "حفظ السجل",
@@ -124,6 +133,7 @@ export const translations = {
     set_quota_paid:         "مدفوع",
     set_quota_free:         "{0} طلب مجاني في اليوم",
     set_quota_free_or_paid: "{0} طلب مجاني · {1} مدفوع / يوم",
+    set_quota_rpm:          "{0} طلب في الدقيقة",
 
     // About section
     set_about_developer: "المطوّر",
@@ -402,6 +412,7 @@ export const translations = {
     err_no_or_key:    "OpenRouter API Key missing, please add it in Settings",
     err_auto_exhausted: "Daily quota exhausted for all free Google models",
     log_auto_switch:   "Model {0} failed — switching to {1}",
+    log_unknown_model: "Model {0} is no longer available — using Auto instead",
 
     log_section: "Activity Log",
     log_clear:   "Clear",
@@ -453,6 +464,14 @@ export const translations = {
     set_auto_desc:     "Uses Google's free models in sequence, automatically switching to the next one whenever a model errors out or runs out of its daily quota.",
     set_used_today:    "{0}/{1} used today",
     quota_auto:        "Auto",
+    set_auto_order:      "Auto model order",
+    set_auto_order_hint: "Models are tried top to bottom. Warid skips any model that is out of quota or over its per-minute limit, then goes back to it once it recovers.",
+    set_auto_reset:      "Reset to default order",
+    set_auto_excluded:   "Not in the chain",
+    set_auto_add:        "Add {0} to the chain",
+    set_auto_remove:     "Remove from the chain",
+    set_auto_up:         "Move up",
+    set_auto_down:       "Move down",
     set_behavior:      "Behavior",
     set_autocopy:      "Auto-copy result to clipboard",
     set_save_hist:     "Save History",
@@ -487,6 +506,7 @@ export const translations = {
     set_quota_paid:         "Paid",
     set_quota_free:         "{0} free /day",
     set_quota_free_or_paid: "{0} free · {1} paid /day",
+    set_quota_rpm:          "{0} /min",
 
     // About section
     set_about_developer: "Developer",

@@ -2,10 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { Eye, EyeOff, Save } from "lucide-react";
+import { Eye, EyeOff, Save, ChevronUp, ChevronDown, X, Plus, RotateCcw } from "lucide-react";
 import { useSettingsStore } from "../../stores/settingsStore";
 import type { Settings } from "../../types";
-import { KNOWN_MODELS, AUTO_MODEL_ID, AUTO_SEQUENCE, modelDailyLimit } from "../../lib/gemini";
+import {
+  KNOWN_MODELS,
+  AUTO_MODEL_ID,
+  AUTO_ELIGIBLE_MODELS,
+  DEFAULT_AUTO_SEQUENCE,
+  resolveAutoSequence,
+  modelDailyLimit,
+} from "../../lib/gemini";
 import { useRequestTrackerStore } from "../../stores/requestTrackerStore";
 import { Sparkles } from "lucide-react";
 import { Select } from "../ui/Select";
@@ -30,6 +37,10 @@ export function SettingsPage() {
   const [apiKey, setApiKey] = useState(settings.apiKey);
   const [openRouterApiKey, setOpenRouterApiKey] = useState(settings.openRouterApiKey);
   const [selectedModel, setSelectedModel] = useState(settings.selectedModel);
+  // The Auto fallback chain, shown resolved (so an untouched setting displays
+  // the built-in order) and saved back as [] whenever it still matches that
+  // order — that way a future release's model list flows through untouched.
+  const [autoChain, setAutoChain] = useState<string[]>(() => resolveAutoSequence(settings.autoSequence));
   const [autoCopy, setAutoCopy] = useState(settings.autoCopy);
   const [saveHistory, setSaveHistory] = useState(settings.saveHistory);
   const [logsEnabled, setLogsEnabled] = useState(settings.logsEnabled);
@@ -44,8 +55,22 @@ export function SettingsPage() {
     getVersion().then(setAppVersion).catch(() => {});
   }, []);
 
+  const isDefaultChain = autoChain.join() === DEFAULT_AUTO_SEQUENCE.join();
+  /** [] means "follow the app's built-in order", so never persist a copy of it. */
+  const chainToSave = isDefaultChain ? [] : autoChain;
+  const excludedModels = AUTO_ELIGIBLE_MODELS.filter((id) => !autoChain.includes(id));
+
+  const moveInChain = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= autoChain.length) return;
+    const next = [...autoChain];
+    [next[index], next[target]] = [next[target], next[index]];
+    setAutoChain(next);
+  };
+
   // Only "light up" the Save button when the form differs from saved settings.
   const isDirty =
+    chainToSave.join() !== (settings.autoSequence ?? []).join() ||
     apiKey !== settings.apiKey ||
     openRouterApiKey !== settings.openRouterApiKey ||
     selectedModel !== settings.selectedModel ||
@@ -61,7 +86,7 @@ export function SettingsPage() {
     e.preventDefault();
     if (!isDirty) return;
     await setLaunchOnStartup(launchOnStartup).catch(() => {});
-    await update({ apiKey, openRouterApiKey, selectedModel, autoCopy, saveHistory, logsEnabled, theme, uiLanguage, launchOnStartup, cancelHotkey: cancelHotkey ?? "" });
+    await update({ apiKey, openRouterApiKey, selectedModel, autoSequence: chainToSave, autoCopy, saveHistory, logsEnabled, theme, uiLanguage, launchOnStartup, cancelHotkey: cancelHotkey ?? "" });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -84,7 +109,12 @@ export function SettingsPage() {
         </span>
       );
     }
-    return <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(34,197,94,0.12)", color: "#4ade80" }}>{t("set_quota_free", quota.rpd.toString())}</span>;
+    return (
+      <>
+        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(34,197,94,0.12)", color: "#4ade80" }}>{t("set_quota_free", quota.rpd.toString())}</span>
+        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--surface-3, var(--surface-2))", color: "var(--muted)" }}>{t("set_quota_rpm", quota.rpm.toString())}</span>
+      </>
+    );
   };
 
   // Per-model "used today / remaining" line. Reflects accurate consumption —
@@ -208,10 +238,81 @@ export function SettingsPage() {
                   </div>
                   <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>{t("set_auto_desc")}</p>
                   <p className="text-[10px] font-mono mt-1.5 truncate" style={{ color: "var(--muted)" }} dir="ltr">
-                    {AUTO_SEQUENCE.map((id) => KNOWN_MODELS.find((m) => m.id === id)?.label ?? id).join(" → ")}
+                    {autoChain.map((id) => KNOWN_MODELS.find((m) => m.id === id)?.label ?? id).join(" → ")}
                   </p>
                 </div>
               </label>
+
+              {/* Auto chain editor — order and membership of the fallback chain */}
+              <div className="rounded-xl p-3 space-y-2" style={{ border: "1px solid var(--border)", background: "var(--surface-2)" }}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="section-label" style={{ color: "var(--text-2)" }}>{t("set_auto_order")}</p>
+                  <button
+                    type="button"
+                    onClick={() => setAutoChain([...DEFAULT_AUTO_SEQUENCE])}
+                    disabled={isDefaultChain}
+                    className="text-xs flex items-center gap-1 px-2 py-1 rounded-lg transition-colors"
+                    style={{ color: isDefaultChain ? "var(--muted)" : "var(--accent)", opacity: isDefaultChain ? 0.5 : 1 }}
+                  >
+                    <RotateCcw size={12} strokeWidth={1.75} />
+                    {t("set_auto_reset")}
+                  </button>
+                </div>
+                <p className="text-xs" style={{ color: "var(--muted)" }}>{t("set_auto_order_hint")}</p>
+
+                <div className="flex flex-col gap-1">
+                  {autoChain.map((id, i) => {
+                    const m = KNOWN_MODELS.find((x) => x.id === id);
+                    const iconBtn = {
+                      background: "transparent",
+                      color: "var(--muted)",
+                      borderRadius: 6,
+                    } as const;
+                    return (
+                      <div key={id} className="flex items-center gap-2 p-2" style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8 }}>
+                        <span className="text-[10px] font-mono w-4 text-center shrink-0" style={{ color: "var(--muted)" }}>{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate" style={{ color: "var(--text)" }}>{m?.label ?? id}</p>
+                          <p className="text-[10px] font-mono truncate" style={{ color: "var(--muted)" }} dir="ltr">{id}</p>
+                        </div>
+                        <button type="button" title={t("set_auto_up")} aria-label={t("set_auto_up")} onClick={() => moveInChain(i, -1)} disabled={i === 0} className="p-1 shrink-0" style={{ ...iconBtn, opacity: i === 0 ? 0.3 : 1 }}>
+                          <ChevronUp size={14} strokeWidth={2} />
+                        </button>
+                        <button type="button" title={t("set_auto_down")} aria-label={t("set_auto_down")} onClick={() => moveInChain(i, 1)} disabled={i === autoChain.length - 1} className="p-1 shrink-0" style={{ ...iconBtn, opacity: i === autoChain.length - 1 ? 0.3 : 1 }}>
+                          <ChevronDown size={14} strokeWidth={2} />
+                        </button>
+                        <button type="button" title={t("set_auto_remove")} aria-label={t("set_auto_remove")} onClick={() => setAutoChain(autoChain.filter((x) => x !== id))} disabled={autoChain.length === 1} className="p-1 shrink-0" style={{ ...iconBtn, opacity: autoChain.length === 1 ? 0.3 : 1 }}>
+                          <X size={14} strokeWidth={2} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {excludedModels.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t("set_auto_excluded")}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {excludedModels.map((id) => {
+                        const label = KNOWN_MODELS.find((x) => x.id === id)?.label ?? id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            title={t("set_auto_add", label)}
+                            onClick={() => setAutoChain([...autoChain, id])}
+                            className="text-xs flex items-center gap-1 px-2 py-1 transition-colors"
+                            style={{ border: "1px dashed var(--border)", borderRadius: 999, color: "var(--text-2)" }}
+                          >
+                            <Plus size={11} strokeWidth={2} />
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {geminiModels.length > 0 && (
                 <div className="space-y-1.5">

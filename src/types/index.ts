@@ -34,6 +34,12 @@ export interface Settings {
   openRouterApiKey: string;
   logsEnabled: boolean;
   selectedModel: string;
+  /**
+   * User-defined order of the Auto fallback chain (model ids, most-preferred
+   * first). Empty = use the app's built-in order. Ids the app no longer knows
+   * are ignored, so an old saved order never breaks a new release.
+   */
+  autoSequence: string[];
   defaultTemplateId: string;
   autoCopy: boolean;
   showTray: boolean;
@@ -91,6 +97,7 @@ export const DEFAULT_SETTINGS: Settings = {
   openRouterApiKey: "",
   logsEnabled: false,
   selectedModel: "auto",
+  autoSequence: [],
   defaultTemplateId: "transcribe",
   autoCopy: true,
   showTray: true,

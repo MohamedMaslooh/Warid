@@ -14,7 +14,7 @@ export function QuotaIndicator({ modelId: propModelId }: { modelId?: string } = 
   const isAuto = selected === AUTO_MODEL_ID;
   // In Auto mode, surface the model that will actually be used next (the first
   // candidate with quota remaining) so the badge stays accurate per-model.
-  const modelId = isAuto ? (getAutoCandidates()[0] ?? selected) : selected;
+  const modelId = isAuto ? (getAutoCandidates(settings.autoSequence)[0] ?? selected) : selected;
   const model = KNOWN_MODELS.find((m) => m.id === modelId);
   if (!model) return null;
 

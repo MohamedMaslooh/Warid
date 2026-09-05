@@ -7,12 +7,21 @@ interface QuotaState {
   usage: Record<string, Record<string, number>>;
   // modelId -> epoch ms until which the model is deprioritized (high demand).
   cooldowns: Record<string, number>;
+  // modelId -> epoch ms of each request in the last minute. Memory-only: the
+  // window is 60s, so nothing is lost that would still be relevant at restart.
+  recent: Record<string, number[]>;
   incrementRequest: (modelId: string) => void;
   getRequestCountToday: (modelId: string) => number;
+  /** Requests sent to this model in the last 60s — checked against its RPM cap
+   *  so Auto steps aside before Google answers with a 429. */
+  getRequestCountLastMinute: (modelId: string) => number;
   /** Mark a model as overloaded; Auto skips it until the cooldown expires. */
   markHighDemand: (modelId: string, durationMs: number) => void;
   isCoolingDown: (modelId: string) => boolean;
 }
+
+/** Width of the per-minute rate-limit window. */
+const MINUTE_MS = 60 * 1000;
 
 const STORAGE_KEY = "warid-request-quota-v1";
 const COOLDOWN_KEY = "warid-model-cooldown-v1";
@@ -66,21 +75,30 @@ const loadInitialCooldowns = (): Record<string, number> => {
 export const useRequestTrackerStore = create<QuotaState>((set, get) => ({
   usage: loadInitialUsage(),
   cooldowns: loadInitialCooldowns(),
+  recent: {},
 
   incrementRequest: (modelId: string) => {
     const today = getTodayString();
+    const now = Date.now();
     set((state) => {
       const dayUsage = state.usage[today] ? { ...state.usage[today] } : {};
       dayUsage[modelId] = (dayUsage[modelId] ?? 0) + 1;
       const updatedUsage = { ...state.usage, [today]: dayUsage };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUsage));
-      return { usage: updatedUsage };
+      // Slide the per-minute window forward, dropping anything older than 60s.
+      const window = [...(state.recent[modelId] ?? []), now].filter((ts) => now - ts < MINUTE_MS);
+      return { usage: updatedUsage, recent: { ...state.recent, [modelId]: window } };
     });
   },
 
   getRequestCountToday: (modelId: string) => {
     const today = getTodayString();
     return get().usage[today]?.[modelId] ?? 0;
+  },
+
+  getRequestCountLastMinute: (modelId: string) => {
+    const now = Date.now();
+    return (get().recent[modelId] ?? []).filter((ts) => now - ts < MINUTE_MS).length;
   },
 
   markHighDemand: (modelId: string, durationMs: number) => {
