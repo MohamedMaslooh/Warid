@@ -10,10 +10,12 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "وارِد | Warid",
         "label": "main",
+        "backgroundThrottling": "disabled",
         "width": 1100,
         "height": 720,
         "minWidth": 800,
@@ -25,6 +27,7 @@
       {
         "title": "Warid Control",
         "label": "overlay",
+        "backgroundThrottling": "disabled",
         "url": "index.html?overlay",
         "width": 460,
         "height": 120,

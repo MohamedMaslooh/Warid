@@ -7,6 +7,13 @@ export interface RecordingResult {
   blob: Blob;
 }
 
+export class RecordingStartCancelledError extends Error {
+  constructor() {
+    super("Recording start cancelled");
+    this.name = "RecordingStartCancelledError";
+  }
+}
+
 export class AudioRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
@@ -17,6 +24,8 @@ export class AudioRecorder {
   private animFrameId: number | null = null;
   private pausedAt: number | null = null;
   private accumulatedPauseMs = 0;
+  private startGeneration = 0;
+  private pendingStart: Promise<void> | null = null;
 
   onWaveform: ((bars: number[]) => void) | null = null;
   onDuration: ((ms: number) => void) | null = null;
@@ -29,37 +38,61 @@ export class AudioRecorder {
 
   async start(deviceId?: string): Promise<void> {
     if (this.isRecording) return;
+    if (this.pendingStart) return this.pendingStart;
     this.cleanup();
-    const audioConstraint: MediaTrackConstraints | boolean = deviceId
-      ? { deviceId: { exact: deviceId } }
-      : true;
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
-    this.audioCtx = new AudioContext();
-    const source = this.audioCtx.createMediaStreamSource(this.stream);
-    this.analyser = this.audioCtx.createAnalyser();
-    this.analyser.fftSize = 64;
-    source.connect(this.analyser);
-
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-      ? "audio/webm;codecs=opus"
-      : "audio/webm";
-
-    this.mediaRecorder = new MediaRecorder(this.stream, { mimeType });
-    this.chunks = [];
-    this.startTime = Date.now();
-    this.pausedAt = null;
-    this.accumulatedPauseMs = 0;
-
-    this.mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) this.chunks.push(e.data);
+    const generation = ++this.startGeneration;
+    const audioConstraint: MediaTrackConstraints = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
     };
+    const pending = (async () => {
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
+        if (generation !== this.startGeneration) throw new RecordingStartCancelledError();
+        this.stream = stream;
+        this.audioCtx = new AudioContext();
+        const source = this.audioCtx.createMediaStreamSource(stream);
+        this.analyser = this.audioCtx.createAnalyser();
+        this.analyser.fftSize = 64;
+        source.connect(this.analyser);
 
-    this.mediaRecorder.start(100);
-    this.tickWaveform();
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm";
 
-    this.durationInterval = setInterval(() => {
-      this.onDuration?.(this.elapsed());
-    }, 200);
+        this.mediaRecorder = new MediaRecorder(stream, { mimeType });
+        this.chunks = [];
+        this.startTime = Date.now();
+        this.pausedAt = null;
+        this.accumulatedPauseMs = 0;
+
+        this.mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) this.chunks.push(e.data);
+        };
+
+        this.mediaRecorder.start(100);
+        this.tickWaveform();
+
+        this.durationInterval = setInterval(() => {
+          this.onDuration?.(this.elapsed());
+        }, 200);
+      } catch (err) {
+        // A cancelled request owns its stream, not any newer recording's state.
+        if (generation === this.startGeneration) this.cleanup();
+        else stream?.getTracks().forEach((track) => track.stop());
+        if (generation !== this.startGeneration) throw new RecordingStartCancelledError();
+        throw err;
+      }
+    })();
+    this.pendingStart = pending;
+    try {
+      await pending;
+    } finally {
+      if (this.pendingStart === pending) this.pendingStart = null;
+    }
   }
 
   pause(): void {
@@ -84,6 +117,11 @@ export class AudioRecorder {
   }
 
   stop(): Promise<RecordingResult> {
+    if (this.pendingStart && !this.isRecording && !this.isPaused) {
+      // Stopping before permission resolves means cancel, not an empty recording.
+      this.cancel();
+      return Promise.reject(new RecordingStartCancelledError());
+    }
     return new Promise((resolve, reject) => {
       if (!this.mediaRecorder) {
         reject(new Error("Not recording"));
@@ -116,6 +154,8 @@ export class AudioRecorder {
   }
 
   cancel(): void {
+    ++this.startGeneration;
+    this.pendingStart = null;
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
       this.mediaRecorder.stop();
     }
@@ -126,7 +166,12 @@ export class AudioRecorder {
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     if (this.durationInterval) clearInterval(this.durationInterval);
     this.stream?.getTracks().forEach((t) => t.stop());
-    this.audioCtx?.close();
+    if (this.audioCtx) void this.audioCtx.close().catch(() => {});
+    if (this.mediaRecorder) {
+      this.mediaRecorder.ondataavailable = null;
+      this.mediaRecorder.onstop = null;
+      this.mediaRecorder.onerror = null;
+    }
     this.stream = null;
     this.audioCtx = null;
     this.analyser = null;

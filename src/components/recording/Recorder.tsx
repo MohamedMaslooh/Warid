@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Mic, Square, RefreshCw, Copy, Terminal, Clock, Zap, Share2 } from "lucide-react";
-import { formatDuration, playBeep } from "../../lib/audio";
+import { formatDuration, playBeep, RecordingStartCancelledError } from "../../lib/audio";
 import { recorder } from "../../lib/sharedRecorder";
 import { abortSignal, clearAbortSignal } from "../../lib/recordingAbort";
 import { doCancel } from "../../lib/cancelHotkey";
@@ -192,6 +192,12 @@ export function Recorder() {
   const handleToggle = useCallback(async (isHotkey = false, templateOverride?: Template) => {
     const state = useRecordingStore.getState().state;
     if (state === "recording") {
+      // A stop while mic permission is pending cancels instead of transcribing.
+      if (!recorder.isRecording && !recorder.isPaused) {
+        recorder.cancel();
+        rs.reset();
+        return;
+      }
       playBeep("stop");
       rs.setState("processing");
       const result = await recorder.stop();
@@ -217,6 +223,7 @@ export function Recorder() {
       };
       try {
         await recorder.start(settings.audioDeviceId || undefined);
+        if (useRecordingStore.getState().state !== "recording") return;
         playBeep("start");
         addLog("info", t("log_msg_mic_ready"));
         if (useSettingsStore.getState().settings.overlayMode !== "off") {
@@ -226,6 +233,7 @@ export function Recorder() {
           await pushOverlayState({ state: "recording", paused: false, duration: 0 });
         }
       } catch (err) {
+        if (err instanceof RecordingStartCancelledError || useRecordingStore.getState().state !== "recording") return;
         const msg = err instanceof Error ? err.message : String(err);
         rs.setError(t("rec_mic_error") + ": " + msg);
         rs.setState("error");

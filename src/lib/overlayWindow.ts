@@ -3,6 +3,7 @@
 import { getAllWebviewWindows, WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { emit } from "@tauri-apps/api/event";
 import { currentMonitor, PhysicalPosition } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 
 export type OverlayBarState = "recording" | "processing" | "idle";
 
@@ -22,11 +23,16 @@ export async function showOverlay(): Promise<void> {
   const overlay = await getOverlay();
   if (!overlay) return;
   try {
-    await overlay.setShadow(false);
-    await overlay.setAlwaysOnTop(true);
-    await overlay.setSkipTaskbar(true);
-    await positionBottomCenter(overlay);
-    await overlay.show();
+    if (navigator.userAgent.includes("Macintosh")) {
+      await positionBottomCenter(overlay);
+      await invoke("show_overlay");
+    } else {
+      await overlay.setShadow(false);
+      await overlay.setAlwaysOnTop(true);
+      await overlay.setSkipTaskbar(true);
+      await positionBottomCenter(overlay);
+      await overlay.show();
+    }
   } catch (err) {
     console.warn("Failed to show overlay", err);
   }

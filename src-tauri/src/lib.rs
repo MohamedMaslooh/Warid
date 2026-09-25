@@ -7,6 +7,93 @@ use tauri::{
     Manager,
 };
 
+#[cfg(target_os = "macos")]
+fn configure_overlay(overlay: &tauri::WebviewWindow) -> Result<(), String> {
+    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask, NSStatusWindowLevel};
+
+    let pointer = overlay.ns_window().map_err(|e| e.to_string())?;
+    // Tauri owns the NSWindow. Reclassing it in place keeps its WKWebView and
+    // window handle intact, as opposed to replacing the native window.
+    let window = unsafe { &*(pointer as *const NSWindow) };
+    unsafe {
+        extern "C" {
+            fn object_setClass(object: *mut std::ffi::c_void, cls: *const std::ffi::c_void)
+                -> *const std::ffi::c_void;
+        }
+        if !objc2::msg_send![window, isKindOfClass: objc2::class!(NSPanel)] {
+            object_setClass(pointer, objc2::class!(NSPanel) as *const _ as *const _);
+        }
+    }
+    window.setStyleMask(window.styleMask() | NSWindowStyleMask::NonactivatingPanel);
+    window.setCollectionBehavior(
+        window.collectionBehavior()
+            | NSWindowCollectionBehavior::CanJoinAllSpaces
+            | NSWindowCollectionBehavior::FullScreenAuxiliary,
+    );
+    window.setLevel(NSStatusWindowLevel);
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn keep_webview_active(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+    let label = window.label().to_owned();
+    // with_webview dispatches the callback to the native event loop (main thread).
+    window.with_webview(move |wv| unsafe {
+        use objc2::{msg_send, runtime::AnyObject, sel};
+
+        let webview = wv.inner() as *mut AnyObject;
+        if webview.is_null() {
+            eprintln!("{label}: WKWebView is null; cannot disable occlusion detection");
+            return;
+        }
+        let webview = &*webview;
+        if msg_send![webview, respondsToSelector: sel!(_setWindowOcclusionDetectionEnabled:)] {
+            let _: () = msg_send![webview, _setWindowOcclusionDetectionEnabled: false];
+            eprintln!("{label}: applied _setWindowOcclusionDetectionEnabled:");
+        }
+
+        let configuration: *mut AnyObject = msg_send![webview, configuration];
+        if configuration.is_null() {
+            return;
+        }
+        let preferences: *mut AnyObject = msg_send![&*configuration, preferences];
+        if preferences.is_null() {
+            return;
+        }
+        let preferences = &*preferences;
+        if msg_send![preferences, respondsToSelector: sel!(_setGetUserMediaRequiresFocus:)] {
+            let _: () = msg_send![preferences, _setGetUserMediaRequiresFocus: false];
+            eprintln!("{label}: applied _setGetUserMediaRequiresFocus:");
+        }
+        if msg_send![preferences, respondsToSelector: sel!(_setHiddenPageDOMTimerThrottlingEnabled:)] {
+            let _: () = msg_send![preferences, _setHiddenPageDOMTimerThrottlingEnabled: false];
+            eprintln!("{label}: applied _setHiddenPageDOMTimerThrottlingEnabled:");
+        }
+        if msg_send![preferences, respondsToSelector: sel!(_setPageVisibilityBasedProcessSuppressionEnabled:)] {
+            let _: () = msg_send![preferences, _setPageVisibilityBasedProcessSuppressionEnabled: false];
+            eprintln!("{label}: applied _setPageVisibilityBasedProcessSuppressionEnabled:");
+        }
+    })
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
+    let overlay = app.get_webview_window("overlay").ok_or("overlay window missing")?;
+    let (sender, mut receiver) = tauri::async_runtime::channel(1);
+    let on_main = overlay.clone();
+    overlay.run_on_main_thread(move || {
+        let result = configure_overlay(&on_main).and_then(|()| {
+            let pointer = on_main.ns_window().map_err(|e| e.to_string())?;
+            let window = unsafe { &*(pointer as *const objc2_app_kit::NSWindow) };
+            window.orderFrontRegardless();
+            Ok(())
+        });
+        let _ = sender.try_send(result);
+    }).map_err(|e| e.to_string())?;
+    receiver.recv().await.ok_or_else(|| "overlay show was cancelled".to_string())?
+}
+
 struct TrayHandles {
     tray: TrayIcon,
     show_item: MenuItem<tauri::Wry>,
@@ -253,6 +340,11 @@ fn paste_at_cursor_impl(app: tauri::AppHandle) -> Result<(), String> {
         use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 
         if let Some(window) = app.get_webview_window("main") {
+            #[cfg(target_os = "macos")]
+            if matches!(window.is_focused(), Ok(true)) {
+                let _ = window.minimize();
+            }
+            #[cfg(not(target_os = "macos"))]
             let _ = window.minimize();
         }
         sleep(Duration::from_millis(120));
@@ -349,11 +441,25 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            #[cfg(target_os = "macos")]
+            for label in ["main", "overlay"] {
+                if let Some(window) = app.get_webview_window(label) {
+                    keep_webview_active(&window)?;
+                }
+            }
+
             if let Some(overlay) = app.get_webview_window("overlay") {
+                #[cfg(target_os = "macos")]
+                {
+                    let on_main = overlay.clone();
+                    overlay.run_on_main_thread(move || {
+                        if let Err(err) = configure_overlay(&on_main) {
+                            eprintln!("Failed to configure overlay panel: {err}");
+                        }
+                    })?;
+                }
+                #[cfg(not(target_os = "macos"))]
                 let _ = overlay.set_always_on_top(true);
-                // We don't know the monitor size yet easily here without a bit more code,
-                // but Tauri's 'center' in tauri.conf handles the horizontal part well.
-                // We'll just let it stay centered for now, or we can use the monitor API.
             }
 
             let state = app.state::<TrayState>();
@@ -364,7 +470,11 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, paste_at_cursor, update_tray_language, save_pdf])
+        .invoke_handler(tauri::generate_handler![
+            greet, paste_at_cursor, update_tray_language, save_pdf,
+            #[cfg(target_os = "macos")]
+            show_overlay
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
