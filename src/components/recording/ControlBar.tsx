@@ -194,6 +194,7 @@ export function ControlBar() {
           to { transform: translateY(0) scale(1); opacity: 1; }
         }
         html, body, #root { background: transparent !important; }
+        body { background-image: none !important; }
         .idle-handle {
           display: flex;
           align-items: center;
