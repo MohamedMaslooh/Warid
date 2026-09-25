@@ -41,12 +41,19 @@ export class AudioRecorder {
     if (this.pendingStart) return this.pendingStart;
     this.cleanup();
     const generation = ++this.startGeneration;
-    const audioConstraint: MediaTrackConstraints = {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-    };
+    // macOS only: WebKit's voice processing (EC/NS/AGC) ducks and muffles the
+    // mic. Other platforms keep the browser defaults exactly as before.
+    const isMac = navigator.userAgent.includes("Macintosh");
+    const audioConstraint: MediaTrackConstraints | boolean = isMac
+      ? {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+        }
+      : deviceId
+        ? { deviceId: { exact: deviceId } }
+        : true;
     const pending = (async () => {
       let stream: MediaStream | null = null;
       try {
