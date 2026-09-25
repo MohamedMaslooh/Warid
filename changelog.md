@@ -6,6 +6,34 @@ This changelog records every meaningful change to the application — features, 
 
 ---
 
+## [v1.1.7] — 2026-09-25
+
+### Fixed
+
+> The macOS overlay, full-screen and microphone fixes below were contributed by [@Ziad-Maslooh](https://github.com/Ziad-Maslooh) in [PR #7](https://github.com/MohamedMaslooh/Warid/pull/7).
+
+#### macOS — the recording bar sat inside a dark box
+- **Problem:** The floating control bar was drawn inside an opaque dark rectangle. On macOS a window's `transparent` setting does nothing unless Tauri's private macOS API is enabled.
+- **Solution:** Enabled `macOSPrivateApi` (and the matching `macos-private-api` Tauri feature), and cleared the page background inside the overlay only. (`src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src/components/recording/ControlBar.tsx`)
+
+#### macOS — the hotkey did nothing over another app in full screen
+- **Problem:** Over another app's full-screen Space the overlay never appeared, and the hotkey only started recording after leaving full screen. The overlay was an ordinary window that could not join that Space, and while Warid's own window was hidden, minimized or covered, WebKit paused the page and held back the microphone request until the window was visible again. Warid also minimized itself after every paste, which paused it again.
+- **Solution:** On macOS the overlay is now a non-activating panel that joins every Space, full-screen ones included, and shows without stealing focus. Both windows are kept active while hidden (background throttling, occlusion detection and "mic needs focus" are turned off). After a transcription Warid now minimizes itself only if its own window had focus. (`src-tauri/src/lib.rs`, `src/lib/overlayWindow.ts`)
+
+#### The microphone indicator stayed on
+- **Problem:** Cancelling or re-pressing the hotkey while the microphone request was still pending could leave a live microphone stream behind, so the system mic indicator stayed on.
+- **Solution:** Each recording start is now tracked, so a start that was cancelled or replaced closes its own stream, and stopping before the microphone is ready cancels cleanly instead of producing an empty recording. This fix applies on every platform. (`src/lib/audio.ts`, `src/components/recording/Recorder.tsx`)
+
+#### macOS — muffled or ducked microphone audio
+- WebKit's voice processing (echo cancellation, noise suppression, automatic gain) is now turned off for the microphone on macOS, which stops the ducking and muffling. Windows and Linux keep their default settings. Very quiet microphones may now record at a lower level. (`src/lib/audio.ts`)
+
+### Changed
+
+- **The update banner now lays out "What's new" properly.** Release notes are shown as grouped sections with titles and bullet points instead of raw text in a small box, with a "Show all changes" toggle for longer notes. (`src/components/layout/UpdateBanner.tsx`, `src/lib/releaseNotes.ts`)
+- **macOS: you may need to allow Accessibility again after this update** before auto-paste works (System Settings → Privacy & Security → Accessibility). macOS ties that permission to the app's signature, which changes with each release.
+
+---
+
 ## [v1.1.6] — 2026-09-05
 
 ### Added
